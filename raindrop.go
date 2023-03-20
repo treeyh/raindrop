@@ -9,6 +9,7 @@ import (
 	"github.com/treeyh/raindrop/db"
 	"github.com/treeyh/raindrop/logger"
 	"github.com/treeyh/raindrop/utils"
+	"github.com/treeyh/raindrop/worker"
 	"strconv"
 	"time"
 )
@@ -65,7 +66,10 @@ func initRaindrop(ctx context.Context, conf config.RainDropConfig) {
 	if err != nil {
 		log.Fatal(ctx, err.Error(), err)
 	}
-	activateWorker(ctx, conf)
+	err = worker.Init(ctx, conf)
+	if err != nil {
+		log.Fatal(ctx, err.Error(), err)
+	}
 }
 
 // checkDbTimeInterval 校验服务器时间和db时间间隔
@@ -80,25 +84,4 @@ func checkDbTimeInterval(ctx context.Context) {
 	if now.Unix() > (dbNow.Unix()+consts.DatabaseTimeInterval) || now.Unix() < (dbNow.Unix()-consts.DatabaseTimeInterval) {
 		log.Fatal(ctx, fmt.Sprintf(consts.ErrMsgDatabaseServerTimeInterval, strconv.Itoa(consts.DatabaseTimeInterval)))
 	}
-}
-
-// activateWorker 激活worker
-func activateWorker(ctx context.Context, conf config.RainDropConfig) {
-	heartbeatMaxTime := time.Now().Add(time.Duration(consts.HeartbeatTimeInterval*-3) * time.Second)
-
-	if conf.TimeUnit == consts.TimeUnitHour {
-		heartbeatMaxTime = time.Now().Add(time.Duration(-1) * time.Hour)
-	} else if conf.TimeUnit == consts.TimeUnitDay {
-		heartbeatMaxTime = time.Now().Add(time.Duration(-24) * time.Hour)
-	}
-
-	workers, err := db.Db.QueryFreeWorkers(ctx, heartbeatMaxTime)
-
-	if err != nil {
-		log.Fatal(ctx, err.Error(), err)
-	}
-	if len(workers) <= 0 {
-		log.Fatal(ctx, consts.ErrMsgNoWorkerAvailable)
-	}
-
 }

@@ -30,7 +30,7 @@ const (
 
 	ErrMsgDatabaseServerTimeInterval = "Server and database time differences of more than %s seconds"
 
-	ErrMsgNoWorkerAvailable = "No worker available"
+	ErrMsgWorkersNotAvailable = "Workers not available"
 )
 
 const (

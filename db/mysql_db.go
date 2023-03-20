@@ -98,6 +98,19 @@ func (m *MySqlDb) InitWorkers(ctx context.Context, beginId int64, endId int64) e
 	return err
 }
 
+// GetBeforeWorker 找到该节点之前的worker
+func (m *MySqlDb) GetBeforeWorker(ctx context.Context, code string, timeUnit int, heartbeatTime time.Time) (*model.IdGeneratorWorker, error) {
+	var worker model.IdGeneratorWorker
+	sql := mysqlPreSelectSql + "AND `code` = ? AND `time_unit` = ? AND `heartbeat_time` < ? ORDER BY `id` asc LIMIT 0,1 "
+	err := _dbConn.QueryRowContext(ctx, sql, code, timeUnit, heartbeatTime).Scan(&worker.Id, &worker.Code, &worker.TimeUnit, &worker.HeartbeatTime, &worker.CreateTime, &worker.UpdateTime, &worker.Version, &worker.DelFlag)
+	if err != nil {
+		log.Error(ctx, "find before worker fail", err)
+		return nil, err
+	}
+
+	return &worker, nil
+}
+
 // QueryFreeWorkers 获取空闲的worker列表
 func (m *MySqlDb) QueryFreeWorkers(ctx context.Context, heartbeatTime time.Time) ([]model.IdGeneratorWorker, error) {
 	sql := mysqlPreSelectSql + "AND `heartbeat_time` < ? "
@@ -122,11 +135,75 @@ func (m *MySqlDb) QueryFreeWorkers(ctx context.Context, heartbeatTime time.Time)
 }
 
 // ActivateWorker 激活启用worker
-func (m *MySqlDb) ActivateWorker(ctx context.Context, id int64, version int64) (bool, error) {
-	dbName := m.getDatabaseName(ctx)
+func (m *MySqlDb) ActivateWorker(ctx context.Context, id int64, code string, timeUnit int, version int64) (*model.IdGeneratorWorker, error) {
+	sql := "UPDATE `" + mysqlTableName + "` SET `code` = ?, `time_unit` = ?, `version` = `version` + 1, `heartbeat_time` = ? WHERE `id` = ? AND `version` = ? "
 
-	var count int
-	_dbConn.QueryRowContext(ctx, "SELECT count(*) FROM information_schema.tables WHERE table_schema = ? AND table_name = ? AND table_type = ?", dbName, mysqlTableName, "BASE TABLE").Scan(&count)
+	result, err := _dbConn.ExecContext(ctx, sql, code, timeUnit, time.Now(), id, version)
+	if err != nil {
+		log.Error(ctx, "heartbeat worker fail!!!", err)
+		return nil, err
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		log.Error(ctx, "heartbeat worker fail!!!", err)
+		return nil, err
+	}
+	if count != 1 {
+		log.Error(ctx, "heartbeat worker fail!!! count: "+strconv.FormatInt(count, 10))
+		return nil, err
+	}
 
-	return true, nil
+	worker, err := m.GetWorkerById(ctx, id)
+	if err != nil {
+		log.Error(ctx, err.Error(), err)
+		return &model.IdGeneratorWorker{
+			Id:            id,
+			Code:          code,
+			TimeUnit:      consts.TimeUnit(timeUnit),
+			HeartbeatTime: time.Now(),
+			CreateTime:    time.Now(),
+			UpdateTime:    time.Now(),
+			Version:       version + 1,
+			DelFlag:       2,
+		}, err
+	}
+
+	return worker, nil
+}
+
+// HeartbeatWorker 心跳
+func (m *MySqlDb) HeartbeatWorker(ctx context.Context, worker *model.IdGeneratorWorker) (*model.IdGeneratorWorker, error) {
+	sql := "UPDATE `" + mysqlTableName + "` SET `version` = `version` + 1, `heartbeat_time` = ? WHERE `id` = ? AND `version` = ? "
+
+	result, err := _dbConn.ExecContext(ctx, sql, time.Now(), worker.Id, worker.Version)
+	if err != nil {
+		log.Error(ctx, "heartbeat worker fail!!!", err)
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		log.Error(ctx, "heartbeat worker fail!!!", err)
+	}
+	if count != 1 {
+		log.Error(ctx, "heartbeat worker fail!!! count: "+strconv.FormatInt(count, 10))
+	}
+
+	worker.Version += 1
+
+	return worker, nil
+}
+
+// GetWorkerById 根据id获取worker
+func (m *MySqlDb) GetWorkerById(ctx context.Context, id int64) (*model.IdGeneratorWorker, error) {
+	sql := mysqlPreSelectSql + " AND `id` = ? "
+	var worker model.IdGeneratorWorker
+
+	err := _dbConn.QueryRowContext(ctx, sql, id).Scan(&worker.Id, &worker.Code, &worker.TimeUnit, &worker.HeartbeatTime,
+		&worker.CreateTime, &worker.UpdateTime, &worker.Version, &worker.DelFlag)
+
+	if err != nil {
+		log.Error(ctx, "get worker by id fail. id: "+strconv.FormatInt(id, 10), err)
+		return nil, err
+	}
+
+	return &worker, nil
 }
