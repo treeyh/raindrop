@@ -20,5 +20,23 @@ const (
 )
 
 const (
-	ErrMsgDatabaseInitFail = "Database initialization failed."
+	ErrMsgDatabaseInitFail = "database initialization failed"
+
+	ErrMsgDatabaseGetNowTimeFail = "get now time database fail"
+
+	ErrMsgDatabaseCreateTableFail = "create table fail"
+
+	ErrMsgDatabaseInitWorkersFail = "initialization workers fail"
+
+	ErrMsgDatabaseServerTimeInterval = "Server and database time differences of more than %s seconds"
+
+	ErrMsgNoWorkerAvailable = "No worker available"
+)
+
+const (
+	// DatabaseTimeInterval 服务器与DB时间允许间隔，秒
+	DatabaseTimeInterval = 30
+
+	// HeartbeatTimeInterval 数据库心跳时间间隔，秒
+	HeartbeatTimeInterval = 30
 )

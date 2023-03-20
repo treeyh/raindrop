@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"encoding/json"
+	"net"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -23,4 +25,36 @@ func FileWithLineNum() string {
 		}
 	}
 	return ""
+}
+
+func ToJson(obj interface{}) (string, error) {
+	bs, err := json.Marshal(obj)
+	return string(bs), err
+}
+
+func ToJsonIgnoreError(obj interface{}) string {
+	bs, _ := json.Marshal(obj)
+	return string(bs)
+}
+
+// GetLocalIP 获取内网ip
+func GetLocalIP() (ip string, err error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return
+	}
+	for _, addr := range addrs {
+		ipAddr, ok := addr.(*net.IPNet)
+		if !ok {
+			continue
+		}
+		if ipAddr.IP.IsLoopback() {
+			continue
+		}
+		if !ipAddr.IP.IsGlobalUnicast() {
+			continue
+		}
+		return ipAddr.IP.String(), nil
+	}
+	return
 }

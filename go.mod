@@ -2,7 +2,10 @@ module github.com/treeyh/raindrop
 
 go 1.19
 
-require github.com/stretchr/testify v1.8.2
+require (
+	github.com/go-sql-driver/mysql v1.7.0
+	github.com/stretchr/testify v1.8.2
+)
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect

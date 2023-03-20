@@ -2,7 +2,7 @@ package logger
 
 import (
 	"context"
-	"github.com/treeyh/raindrop/model"
+	"fmt"
 	"github.com/treeyh/raindrop/utils"
 )
 
@@ -46,37 +46,51 @@ type ILogger interface {
 	Fatal(context.Context, string, ...interface{})
 }
 
-func New(writer IWriter, config model.RainDropLogConfig) ILogger {
+type DefaultWriter struct {
+}
+
+func (dw *DefaultWriter) Printf(ctx context.Context, msg string, data ...interface{}) {
+	fmt.Println(append([]interface{}{msg}, data...))
+}
+
+func New(writer IWriter, logLevel LogLevel, colorful bool) ILogger {
 	var (
-		debugStr = "%s\n[debug] "
-		infoStr  = "%s\n[info] "
-		warnStr  = "%s\n[warn] "
-		errStr   = "%s\n[error] "
-		fatalStr = "%s\n[error] "
+		debugStr = "[debug] %s"
+		infoStr  = "[info] %s"
+		warnStr  = "[warn] %s"
+		errStr   = "[error] %s"
+		fatalStr = "[fatal] %s"
 	)
 
-	if config.Colorful {
-		debugStr = Green + "%s\n" + Reset + Green + "[debug] " + Reset
-		infoStr = Green + "%s\n" + Reset + Green + "[info] " + Reset
-		warnStr = BlueBold + "%s\n" + Reset + Magenta + "[warn] " + Reset
-		errStr = Magenta + "%s\n" + Reset + Red + "[error] " + Reset
-		fatalStr = Red + "%s\n" + Reset + RedBold + "[fatal] " + Reset
+	if colorful {
+		debugStr = Green + "[debug] " + "%s" + Reset + Green + Reset
+		infoStr = Green + "[info] " + "%s" + Reset + Green + Reset
+		warnStr = BlueBold + "[warn] " + "%s" + Reset + Magenta + Reset
+		errStr = Magenta + "[error] " + "%s" + Reset + Red + Reset
+		fatalStr = Red + "[fatal] " + "%s" + Reset + RedBold + Reset
 	}
 
 	return &_logger{
-		IWriter:           writer,
-		RainDropLogConfig: config,
-		debugStr:          debugStr,
-		infoStr:           infoStr,
-		warnStr:           warnStr,
-		errStr:            errStr,
-		fatalStr:          fatalStr,
+		IWriter:  writer,
+		LogLevel: logLevel,
+		Colorful: colorful,
+		debugStr: debugStr,
+		infoStr:  infoStr,
+		warnStr:  warnStr,
+		errStr:   errStr,
+		fatalStr: fatalStr,
 	}
+}
+
+func NewDefault() ILogger {
+	d := DefaultWriter{}
+	return New(&d, Info, true)
 }
 
 type _logger struct {
 	IWriter
-	model.RainDropLogConfig
+	LogLevel                                     LogLevel
+	Colorful                                     bool
 	debugStr, infoStr, warnStr, errStr, fatalStr string
 }
 
@@ -89,36 +103,36 @@ func (l *_logger) LogMode(level LogLevel) ILogger {
 
 // Debug print info
 func (l _logger) Debug(ctx context.Context, msg string, data ...interface{}) {
-	if l.LogLevel >= Debug {
-		l.Printf(ctx, l.infoStr+msg, append([]interface{}{utils.FileWithLineNum()}, data...)...)
+	if l.LogLevel < Debug {
+		l.Printf(ctx, fmt.Sprintf(l.debugStr, msg), append([]interface{}{utils.FileWithLineNum()}, data...)...)
 	}
 }
 
 // Info print info
 func (l _logger) Info(ctx context.Context, msg string, data ...interface{}) {
-	if l.LogLevel >= Info {
-		l.Printf(ctx, l.infoStr+msg, append([]interface{}{utils.FileWithLineNum()}, data...)...)
+	if l.LogLevel < Info {
+		l.Printf(ctx, fmt.Sprintf(l.infoStr, msg), append([]interface{}{utils.FileWithLineNum()}, data...)...)
 	}
 }
 
 // Warn print warn messages
 func (l _logger) Warn(ctx context.Context, msg string, data ...interface{}) {
-	if l.LogLevel >= Warn {
-		l.Printf(ctx, l.warnStr+msg, append([]interface{}{utils.FileWithLineNum()}, data...)...)
+	if l.LogLevel < Warn {
+		l.Printf(ctx, fmt.Sprintf(l.warnStr, msg), append([]interface{}{utils.FileWithLineNum()}, data...)...)
 	}
 }
 
 // Error print error messages
 func (l _logger) Error(ctx context.Context, msg string, data ...interface{}) {
-	if l.LogLevel >= Error {
-		l.Printf(ctx, l.errStr+msg, append([]interface{}{utils.FileWithLineNum()}, data...)...)
+	if l.LogLevel < Error {
+		l.Printf(ctx, fmt.Sprintf(l.errStr, msg), append([]interface{}{utils.FileWithLineNum()}, data...)...)
 	}
 }
 
 // Fatal print error messages
 func (l _logger) Fatal(ctx context.Context, msg string, data ...interface{}) {
-	if l.LogLevel >= Fatal {
-		l.Printf(ctx, l.errStr+msg, append([]interface{}{utils.FileWithLineNum()}, data...)...)
+	if l.LogLevel < Fatal {
+		l.Printf(ctx, fmt.Sprintf(l.fatalStr, msg), append([]interface{}{utils.FileWithLineNum()}, data...)...)
 	}
 	panic(msg)
 }

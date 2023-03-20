@@ -1,6 +1,8 @@
-package model
+package config
 
 import (
+	"context"
+	"errors"
 	"github.com/treeyh/raindrop/consts"
 	"github.com/treeyh/raindrop/logger"
 	"time"
@@ -14,24 +16,16 @@ type RainDropDbConfig struct {
 	DbUrl string `json:"dbUrl"`
 }
 
-type RainDropLogConfig struct {
-	// Colorful 是否开启颜色
-	Colorful bool `json:"colorful"`
-
-	// LogLevel 日志级别
-	LogLevel logger.LogLevel `json:"logLevel"`
-
-	// LogWriter 日志写入方法
-	LogWriter logger.IWriter `json:"logWriter"`
-}
-
 type RainDropConfig struct {
 
 	// DbConfig 数据库配置
-	DbConfig *RainDropDbConfig `json:"dbConfig"`
+	DbConfig RainDropDbConfig `json:"dbConfig"`
 
-	// LogConfig 日志配置
-	LogConfig *RainDropLogConfig `json:"logConfig"`
+	// Logger 日志
+	Logger logger.ILogger `json:"logger"`
+
+	// ServicePort 服务端口
+	ServicePort int `json:"servicePort"`
 
 	// TimeUnit 时间戳单位, 1：毫秒（可能会有闰秒问题）；2：秒，默认；3：分钟；4：小时，间隔过大不建议选择；5：天，间隔过大不建议选择；
 	TimeUnit consts.TimeUnit `json:"timeUnit"`
@@ -112,8 +106,51 @@ type RainDropConfig struct {
 	WorkIdLength int `json:"workIdLength"`
 
 	// ServiceMinWorkId 服务的最小工作节点 id，默认 1，需在 workIdLength 的定义范围内，最大值最小值用于不同数据中心的隔离。
-	ServiceMinWorkId string `json:"serviceMinWorkId"`
+	ServiceMinWorkId int64 `json:"serviceMinWorkId"`
 
 	// ServiceMaxWorkId 服务的最大工作节点 id，默认 workIdLength 的最大值，需在 workIdLength 的定义范围内。
-	ServiceMaxWorkId string `json:"serviceMaxWorkId"`
+	ServiceMaxWorkId int64 `json:"serviceMaxWorkId"`
+}
+
+func CheckConfig(ctx context.Context, conf RainDropConfig) error {
+	if conf.ServicePort < 1 || conf.ServicePort > 65535 {
+		return errors.New("ServicePort range between 1 and 65535")
+	}
+
+	if conf.ServiceMinWorkId > conf.ServiceMaxWorkId {
+		return errors.New("ServiceMaxWorkId must be greater than ServiceMinWorkId")
+	}
+
+	switch conf.TimeUnit {
+	case consts.TimeUnitMillisecond:
+		if conf.TimeLength < 41 || conf.TimeLength > 50 {
+			return errors.New("When TimeUnit is millisecond, TimeLength must be between 41 and 50")
+		}
+	case consts.TimeUnitSecond:
+		if conf.TimeLength < 31 || conf.TimeLength > 40 {
+			return errors.New("When TimeUnit is second, TimeLength must be between 31 and 40")
+		}
+	case consts.TimeUnitMinute:
+		if conf.TimeLength < 25 || conf.TimeLength > 34 {
+			return errors.New("When TimeUnit is minute, TimeLength must be between 25 and 34")
+		}
+	case consts.TimeUnitHour:
+		if conf.TimeLength < 19 || conf.TimeLength > 28 {
+			return errors.New("When TimeUnit is hour, TimeLength must be between 19 and 28")
+		}
+	case consts.TimeUnitDay:
+		if conf.TimeLength < 15 || conf.TimeLength > 24 {
+			return errors.New("When TimeUnit is day, TimeLength must be between 15 and 24")
+		}
+	}
+
+	if conf.WorkIdLength < 4 || conf.WorkIdLength > 10 {
+		return errors.New("WorkIdLength takes values between 4 and 10")
+	}
+
+	if time.Now().Unix() < conf.StartTimeStamp.Unix() {
+		return errors.New("StartTimeStamp is greater than the current time")
+	}
+
+	return nil
 }
