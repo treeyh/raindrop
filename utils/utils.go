@@ -19,8 +19,8 @@ func init() {
 func FileWithLineNum() string {
 	for i := 2; i < 15; i++ {
 		_, file, line, ok := runtime.Caller(i)
-		println(raindropSourceDir)
-		if ok && (!strings.HasPrefix(file, raindropSourceDir) || strings.HasSuffix(file, "_test.go")) {
+		//  && strings.HasPrefix(file, raindropSourceDir)
+		if ok && !strings.HasSuffix(file, "_test.go") {
 			return file + ":" + strconv.FormatInt(int64(line), 10)
 		}
 	}

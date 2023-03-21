@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"github.com/treeyh/raindrop/consts"
 	"github.com/treeyh/raindrop/model"
@@ -13,7 +14,7 @@ import (
 const (
 	mysqlTableName = "soc_id_generator_worker"
 
-	mysqlPreSelectSql = "SELECT `id`, `code`, `time_unit`, `heartbeat_time`, `create_time`, `update_time`, `version`, `del_flag` FROM ``" + mysqlTableName + "` WHERE `del_flag` = 2 "
+	mysqlPreSelectSql = "SELECT `id`, `code`, `time_unit`, `heartbeat_time`, `create_time`, `update_time`, `version`, `del_flag` FROM " + mysqlTableName + " WHERE `del_flag` = 2 "
 )
 
 type MySqlDb struct {
@@ -99,11 +100,15 @@ func (m *MySqlDb) InitWorkers(ctx context.Context, beginId int64, endId int64) e
 }
 
 // GetBeforeWorker 找到该节点之前的worker
-func (m *MySqlDb) GetBeforeWorker(ctx context.Context, code string, timeUnit int, heartbeatTime time.Time) (*model.IdGeneratorWorker, error) {
+func (m *MySqlDb) GetBeforeWorker(ctx context.Context, code string, timeUnit int) (*model.IdGeneratorWorker, error) {
 	var worker model.IdGeneratorWorker
-	sql := mysqlPreSelectSql + "AND `code` = ? AND `time_unit` = ? AND `heartbeat_time` < ? ORDER BY `id` asc LIMIT 0,1 "
-	err := _dbConn.QueryRowContext(ctx, sql, code, timeUnit, heartbeatTime).Scan(&worker.Id, &worker.Code, &worker.TimeUnit, &worker.HeartbeatTime, &worker.CreateTime, &worker.UpdateTime, &worker.Version, &worker.DelFlag)
+	s := mysqlPreSelectSql + "AND `code` = ? AND `time_unit` = ? ORDER BY `id` asc LIMIT 0,1 "
+	err := _dbConn.QueryRowContext(ctx, s, code, timeUnit).Scan(&worker.Id, &worker.Code,
+		&worker.TimeUnit, &worker.HeartbeatTime, &worker.CreateTime, &worker.UpdateTime, &worker.Version, &worker.DelFlag)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		log.Error(ctx, "find before worker fail", err)
 		return nil, err
 	}
@@ -113,13 +118,13 @@ func (m *MySqlDb) GetBeforeWorker(ctx context.Context, code string, timeUnit int
 
 // QueryFreeWorkers 获取空闲的worker列表
 func (m *MySqlDb) QueryFreeWorkers(ctx context.Context, heartbeatTime time.Time) ([]model.IdGeneratorWorker, error) {
-	sql := mysqlPreSelectSql + "AND `heartbeat_time` < ? "
-	rows, err := _dbConn.QueryContext(ctx, sql, heartbeatTime)
+	workers := make([]model.IdGeneratorWorker, 0)
+	s := mysqlPreSelectSql + "AND `heartbeat_time` < ? "
+	rows, err := _dbConn.QueryContext(ctx, s, heartbeatTime)
 	if err != nil {
 		log.Error(ctx, "query workers fail", err)
 		return nil, err
 	}
-	workers := make([]model.IdGeneratorWorker, 0)
 	for rows.Next() {
 		var worker model.IdGeneratorWorker
 		e := rows.Scan(&worker.Id, &worker.Code, &worker.TimeUnit, &worker.HeartbeatTime, &worker.CreateTime, &worker.UpdateTime, &worker.Version, &worker.DelFlag)
@@ -184,20 +189,24 @@ func (m *MySqlDb) HeartbeatWorker(ctx context.Context, worker *model.IdGenerator
 		log.Error(ctx, "heartbeat worker fail!!!", err)
 	}
 	if count != 1 {
-		log.Error(ctx, "heartbeat worker fail!!! count: "+strconv.FormatInt(count, 10))
+		log.Error(ctx, "heartbeat worker fail!!! result: "+strconv.FormatInt(count, 10))
 	}
 
-	worker.Version += 1
+	w, _ := m.GetWorkerById(ctx, worker.Id)
 
+	if w != nil {
+		return w, nil
+	}
+	worker.Version += 1
 	return worker, nil
 }
 
 // GetWorkerById 根据id获取worker
 func (m *MySqlDb) GetWorkerById(ctx context.Context, id int64) (*model.IdGeneratorWorker, error) {
-	sql := mysqlPreSelectSql + " AND `id` = ? "
+	s := mysqlPreSelectSql + " AND `id` = ? "
 	var worker model.IdGeneratorWorker
 
-	err := _dbConn.QueryRowContext(ctx, sql, id).Scan(&worker.Id, &worker.Code, &worker.TimeUnit, &worker.HeartbeatTime,
+	err := _dbConn.QueryRowContext(ctx, s, id).Scan(&worker.Id, &worker.Code, &worker.TimeUnit, &worker.HeartbeatTime,
 		&worker.CreateTime, &worker.UpdateTime, &worker.Version, &worker.DelFlag)
 
 	if err != nil {

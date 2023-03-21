@@ -18,6 +18,11 @@ var (
 	timeUnit   consts.TimeUnit
 	log        logger.ILogger
 	worker     *model.IdGeneratorWorker
+
+	// 开始计算时间戳，毫秒
+	startTime int64
+	// 当前时间流水，当前时刻毫秒 - startTime,换算时间单位取整
+	nowTimeSeq int64
 )
 
 // Init 初始化worker
@@ -32,18 +37,47 @@ func Init(ctx context.Context, conf config.RainDropConfig) error {
 	timeUnit = conf.TimeUnit
 
 	worker, err = activateWorker(ctx)
+	if worker == nil {
+		if err != nil {
+			return err
+		}
+		log.Error(ctx, consts.ErrMsgWorkersNotAvailable)
+		return errors.New(consts.ErrMsgWorkersNotAvailable)
+	}
+
+	startTime = conf.StartTimeStamp.UnixMilli()
+	err = calcNowTimeSeq(ctx)
 	if err != nil {
 		return err
 	}
 
+	if v := ctx.Value(consts.ProjectName); v != nil {
+		// 支持单元测试，跳过启动心跳线程
+		if consts.SkipHeartbeat == v.(string) {
+			return nil
+		}
+	}
+
+	go startCalcNowTimeSeq(ctx)
+	go startHeartbeat(ctx)
+
 	return nil
+}
+
+// GetWorkerId 获得WorkerId
+func GetWorkerId(ctx context.Context) int64 {
+	return worker.Id
+}
+
+// GetNowTimeSeq 获得NowTimeSeq
+func GetNowTimeSeq(ctx context.Context) int64 {
+	return nowTimeSeq
 }
 
 // activateWorker 激活worker
 func activateWorker(ctx context.Context) (*model.IdGeneratorWorker, error) {
 	if timeUnit == consts.TimeUnitMillisecond || timeUnit == consts.TimeUnitSecond {
-		w, err := db.Db.GetBeforeWorker(ctx, workerCode, int(timeUnit),
-			time.Now().Add(time.Duration(consts.HeartbeatTimeInterval*-3)*time.Second))
+		w, err := db.Db.GetBeforeWorker(ctx, workerCode, int(timeUnit))
 
 		if err != nil {
 			return nil, err
@@ -77,4 +111,11 @@ func activateWorker(ctx context.Context) (*model.IdGeneratorWorker, error) {
 		return nil, errors.New(consts.ErrMsgWorkersNotAvailable)
 	}
 
+	for _, w := range workers {
+		w2, e := db.Db.ActivateWorker(ctx, w.Id, workerCode, int(timeUnit), w.Version)
+		if w2 != nil {
+			return w2, e
+		}
+	}
+	return nil, nil
 }

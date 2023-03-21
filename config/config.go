@@ -93,6 +93,9 @@ type RainDropConfig struct {
 	*/
 	TimeLength int `json:"timeLength"`
 
+	// PriorityExistWorkId 优先已存在workId，优先查询相同内网ip和端口的workerId，如果内网ip重复可能有问题，默认：false
+	PriorityExistWorkId bool `json:"priorityExistWorkId"`
+
 	// WorkIdLength 工作节点 id 长度，取值范围 4 - 10 位.
 	/*
 	  - 4：支持 15 个工作节点，默认，取值范围：1-15；
@@ -115,10 +118,6 @@ type RainDropConfig struct {
 func CheckConfig(ctx context.Context, conf RainDropConfig) error {
 	if conf.ServicePort < 1 || conf.ServicePort > 65535 {
 		return errors.New("ServicePort range between 1 and 65535")
-	}
-
-	if conf.ServiceMinWorkId > conf.ServiceMaxWorkId {
-		return errors.New("ServiceMaxWorkId must be greater than ServiceMinWorkId")
 	}
 
 	switch conf.TimeUnit {
@@ -148,8 +147,43 @@ func CheckConfig(ctx context.Context, conf RainDropConfig) error {
 		return errors.New("WorkIdLength takes values between 4 and 10")
 	}
 
+	if conf.ServiceMinWorkId > conf.ServiceMaxWorkId {
+		return errors.New("ServiceMaxWorkId must be greater than ServiceMinWorkId")
+	}
+
+	switch conf.WorkIdLength {
+	case 4:
+		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 15 {
+			return errors.New("When WorkIdLength is 4, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 15.")
+		}
+	case 5:
+		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 31 {
+			return errors.New("When WorkIdLength is 5, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 31.")
+		}
+	case 6:
+		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 63 {
+			return errors.New("When WorkIdLength is 6, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 63.")
+		}
+	case 7:
+		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 127 {
+			return errors.New("When WorkIdLength is 7, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 127.")
+		}
+	case 8:
+		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 255 {
+			return errors.New("When WorkIdLength is 8, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 255.")
+		}
+	case 9:
+		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 511 {
+			return errors.New("When WorkIdLength is 9, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 511.")
+		}
+	case 10:
+		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 1023 {
+			return errors.New("When WorkIdLength is 10, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 1023.")
+		}
+	}
+
 	if time.Now().Unix() < conf.StartTimeStamp.Unix() {
-		return errors.New("StartTimeStamp is greater than the current time")
+		return errors.New(consts.ErrMsgStartTimeStampError)
 	}
 
 	return nil

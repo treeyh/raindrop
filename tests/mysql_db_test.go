@@ -5,14 +5,27 @@ import (
 	"github.com/treeyh/raindrop/db"
 	"github.com/treeyh/raindrop/logger"
 	"testing"
+	"time"
 )
 
 func TestMySqlDb_GetNowTime(t *testing.T) {
-	ctx := GetContext()
-	db.InitMySqlDb(ctx, GetMySqlConfig(), logger.NewDefault())
+	ctx := getTestContext()
+	l := logger.NewDefault()
+	db.InitMySqlDb(ctx, getTestMySqlConfig(), l)
 
 	now, err := db.Db.GetNowTime(ctx)
 
 	assert.NoError(t, err)
 	t.Log(now)
+	t.Log(now.Unix())
+}
+
+func TestMySqlDb_QueryFreeWorkers(t *testing.T) {
+
+	ctx := getTestContext()
+	db.InitMySqlDb(ctx, getTestMySqlConfig(), logger.NewDefault())
+
+	workers, err := db.Db.QueryFreeWorkers(ctx, time.Now())
+	assert.NoError(t, err)
+	t.Log(workers)
 }

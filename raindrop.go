@@ -28,10 +28,17 @@ func Init(ctx context.Context, conf config.RainDropConfig) {
 	if err != nil {
 		log.Fatal(ctx, "config check fail", err)
 	}
+	log.Debug(ctx, "check config over.")
+	err = initDb(ctx, conf)
+	if err != nil {
+		log.Fatal(ctx, "init db fail", err)
+	}
 
-	initDb(ctx, conf)
-
-	initRaindrop(ctx, conf)
+	log.Debug(ctx, "init db over.")
+	err = initRaindrop(ctx, conf)
+	if err != nil {
+		log.Fatal(ctx, "init raindrop fail", err)
+	}
 }
 
 // initLogger 初始化日志
@@ -44,7 +51,7 @@ func initLogger(ctx context.Context, conf config.RainDropConfig) {
 }
 
 // initDb 初始化数据库
-func initDb(ctx context.Context, conf config.RainDropConfig) {
+func initDb(ctx context.Context, conf config.RainDropConfig) error {
 	var err error
 	if consts.DbTypeMySql == conf.DbConfig.DbType {
 		err = db.InitMySqlDb(ctx, conf.DbConfig, log)
@@ -53,35 +60,45 @@ func initDb(ctx context.Context, conf config.RainDropConfig) {
 		err = errors.New(consts.ErrMsgDatabaseInitFail)
 	}
 	if err != nil {
-		log.Fatal(ctx, err.Error())
+		log.Error(ctx, err.Error(), err)
 	}
 
 	log.Debug(ctx, "raindrop database initialization completed.")
+	return err
 }
 
 // initRaindrop 初始化雨滴
-func initRaindrop(ctx context.Context, conf config.RainDropConfig) {
-	checkDbTimeInterval(ctx)
-	err := db.InitTableWorkers(ctx, conf.ServiceMinWorkId, conf.ServiceMaxWorkId)
+func initRaindrop(ctx context.Context, conf config.RainDropConfig) error {
+	err := checkDbTimeInterval(ctx)
 	if err != nil {
-		log.Fatal(ctx, err.Error(), err)
+		return err
+	}
+	err = db.InitTableWorkers(ctx, conf.ServiceMinWorkId, conf.ServiceMaxWorkId)
+	if err != nil {
+		log.Error(ctx, err.Error(), err)
+		return err
 	}
 	err = worker.Init(ctx, conf)
 	if err != nil {
-		log.Fatal(ctx, err.Error(), err)
+		log.Error(ctx, err.Error(), err)
+		return err
 	}
+	return nil
 }
 
 // checkDbTimeInterval 校验服务器时间和db时间间隔
-func checkDbTimeInterval(ctx context.Context) {
+func checkDbTimeInterval(ctx context.Context) error {
 	now := time.Now()
 	dbNow, err := db.Db.GetNowTime(ctx)
 
 	if err != nil {
-		log.Fatal(ctx, "get database now time fail", err)
+		log.Error(ctx, "get database now time fail", err)
+		return err
 	}
 
 	if now.Unix() > (dbNow.Unix()+consts.DatabaseTimeInterval) || now.Unix() < (dbNow.Unix()-consts.DatabaseTimeInterval) {
-		log.Fatal(ctx, fmt.Sprintf(consts.ErrMsgDatabaseServerTimeInterval, strconv.Itoa(consts.DatabaseTimeInterval)))
+		log.Error(ctx, fmt.Sprintf(consts.ErrMsgDatabaseServerTimeInterval, strconv.Itoa(consts.DatabaseTimeInterval)))
+		return errors.New(consts.ErrMsgDatabaseServerTimeInterval)
 	}
+	return nil
 }

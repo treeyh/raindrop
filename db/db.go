@@ -33,7 +33,7 @@ type IDb interface {
 	InitWorkers(ctx context.Context, beginId int64, endId int64) error
 
 	// GetBeforeWorker 找到该节点之前的worker
-	GetBeforeWorker(ctx context.Context, code string, timeUnit int, heartbeatTime time.Time) (*model.IdGeneratorWorker, error)
+	GetBeforeWorker(ctx context.Context, code string, timeUnit int) (*model.IdGeneratorWorker, error)
 
 	// QueryFreeWorkers 查询空闲的workers
 	QueryFreeWorkers(ctx context.Context, heartbeatTime time.Time) ([]model.IdGeneratorWorker, error)

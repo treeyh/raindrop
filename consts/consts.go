@@ -11,6 +11,12 @@ const (
 )
 
 const (
+	ProjectName = "raindrop"
+
+	SkipHeartbeat = "skip_heartbeat"
+)
+
+const (
 	DbTypeMySql = "mysql"
 
 	DbTypePostgreSQL = "postgresql"
@@ -31,6 +37,8 @@ const (
 	ErrMsgDatabaseServerTimeInterval = "Server and database time differences of more than %s seconds"
 
 	ErrMsgWorkersNotAvailable = "Workers not available"
+
+	ErrMsgStartTimeStampError = "StartTimeStamp is greater than the current time"
 )
 
 const (

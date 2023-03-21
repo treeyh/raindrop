@@ -103,35 +103,35 @@ func (l *_logger) LogMode(level LogLevel) ILogger {
 
 // Debug print info
 func (l _logger) Debug(ctx context.Context, msg string, data ...interface{}) {
-	if l.LogLevel < Debug {
+	if l.LogLevel <= Debug {
 		l.Printf(ctx, fmt.Sprintf(l.debugStr, msg), append([]interface{}{utils.FileWithLineNum()}, data...)...)
 	}
 }
 
 // Info print info
 func (l _logger) Info(ctx context.Context, msg string, data ...interface{}) {
-	if l.LogLevel < Info {
+	if l.LogLevel <= Info {
 		l.Printf(ctx, fmt.Sprintf(l.infoStr, msg), append([]interface{}{utils.FileWithLineNum()}, data...)...)
 	}
 }
 
 // Warn print warn messages
 func (l _logger) Warn(ctx context.Context, msg string, data ...interface{}) {
-	if l.LogLevel < Warn {
+	if l.LogLevel <= Warn {
 		l.Printf(ctx, fmt.Sprintf(l.warnStr, msg), append([]interface{}{utils.FileWithLineNum()}, data...)...)
 	}
 }
 
 // Error print error messages
 func (l _logger) Error(ctx context.Context, msg string, data ...interface{}) {
-	if l.LogLevel < Error {
+	if l.LogLevel <= Error {
 		l.Printf(ctx, fmt.Sprintf(l.errStr, msg), append([]interface{}{utils.FileWithLineNum()}, data...)...)
 	}
 }
 
 // Fatal print error messages
 func (l _logger) Fatal(ctx context.Context, msg string, data ...interface{}) {
-	if l.LogLevel < Fatal {
+	if l.LogLevel <= Fatal {
 		l.Printf(ctx, fmt.Sprintf(l.fatalStr, msg), append([]interface{}{utils.FileWithLineNum()}, data...)...)
 	}
 	panic(msg)
