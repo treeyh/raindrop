@@ -93,8 +93,8 @@ type RainDropConfig struct {
 	*/
 	TimeLength int `json:"timeLength"`
 
-	// PriorityExistWorkId 优先已存在workId，优先查询相同内网ip和端口的workerId，如果内网ip重复可能有问题，默认：false
-	PriorityExistWorkId bool `json:"priorityExistWorkId"`
+	// PriorityEqualCodeWorkId 优先相同code的workerId(毫秒，秒单位场景下生效)，默认：false。code格式为：{内网ip}:{ServicePort}#{Mac地址}
+	PriorityEqualCodeWorkId bool `json:"priorityEqualCodeWorkId"`
 
 	// WorkIdLength 工作节点 id 长度，取值范围 4 - 10 位.
 	/*

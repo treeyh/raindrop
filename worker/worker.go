@@ -10,6 +10,7 @@ import (
 	"github.com/treeyh/raindrop/model"
 	"github.com/treeyh/raindrop/utils"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -23,6 +24,10 @@ var (
 	startTime int64
 	// 当前时间流水，当前时刻毫秒 - startTime,换算时间单位取整
 	nowTimeSeq int64
+
+	_globalLock  sync.Mutex
+	_codeSeqMap  = make(map[string]int64)
+	_codeLockMap = make(map[string]sync.Mutex)
 )
 
 // Init 初始化worker
@@ -33,10 +38,10 @@ func Init(ctx context.Context, conf config.RainDropConfig) error {
 		log.Error(ctx, "get local ip fail", err)
 		return err
 	}
-	workerCode = ip + ":" + strconv.Itoa(conf.ServicePort)
+	workerCode = ip + ":" + strconv.Itoa(conf.ServicePort) + "#" + utils.GetFirstMacAddr()
 	timeUnit = conf.TimeUnit
 
-	worker, err = activateWorker(ctx)
+	worker, err = activateWorker(ctx, conf)
 	if worker == nil {
 		if err != nil {
 			return err
@@ -75,8 +80,9 @@ func GetNowTimeSeq(ctx context.Context) int64 {
 }
 
 // activateWorker 激活worker
-func activateWorker(ctx context.Context) (*model.IdGeneratorWorker, error) {
-	if timeUnit == consts.TimeUnitMillisecond || timeUnit == consts.TimeUnitSecond {
+func activateWorker(ctx context.Context, conf config.RainDropConfig) (*model.IdGeneratorWorker, error) {
+
+	if conf.PriorityEqualCodeWorkId && (timeUnit == consts.TimeUnitMillisecond || timeUnit == consts.TimeUnitSecond) {
 		w, err := db.Db.GetBeforeWorker(ctx, workerCode, int(timeUnit))
 
 		if err != nil {

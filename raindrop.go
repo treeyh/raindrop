@@ -41,6 +41,28 @@ func Init(ctx context.Context, conf config.RainDropConfig) {
 	}
 }
 
+// NewId 获取新id
+func NewId() int64 {
+	ctx := context.Background()
+	return NewIdContext(ctx)
+}
+
+// NewIdContext 获取新id
+func NewIdContext(ctx context.Context) int64 {
+	return 0
+}
+
+// NewIdByCode 基于code获取新id
+func NewIdByCode(code string) int64 {
+	ctx := context.Background()
+	return NewIdContextByCode(ctx, code)
+}
+
+// NewIdContextByCode 基于code获取新id
+func NewIdContextByCode(ctx context.Context, code string) int64 {
+	return 0
+}
+
 // initLogger 初始化日志
 func initLogger(ctx context.Context, conf config.RainDropConfig) {
 	if conf.Logger != nil {

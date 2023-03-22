@@ -53,31 +53,31 @@ func getTestStdoutLogger() logger.ILogger {
 
 func getTestSecondConfig() config.RainDropConfig {
 	return config.RainDropConfig{
-		DbConfig:            getTestMySqlConfig(),
-		Logger:              getTestStdoutLogger(),
-		ServicePort:         port,
-		TimeUnit:            consts.TimeUnitSecond,
-		StartTimeStamp:      time.Date(2023, 1, 1, 0, 0, 0, 0, time.Local),
-		TimeLength:          35,
-		PriorityExistWorkId: false,
-		WorkIdLength:        workerLength,
-		ServiceMinWorkId:    minWorkerId,
-		ServiceMaxWorkId:    maxWorkerId,
+		DbConfig:                getTestMySqlConfig(),
+		Logger:                  getTestStdoutLogger(),
+		ServicePort:             port,
+		TimeUnit:                consts.TimeUnitSecond,
+		StartTimeStamp:          time.Date(2023, 1, 1, 0, 0, 0, 0, time.Local),
+		TimeLength:              35,
+		PriorityEqualCodeWorkId: false,
+		WorkIdLength:            workerLength,
+		ServiceMinWorkId:        minWorkerId,
+		ServiceMaxWorkId:        maxWorkerId,
 	}
 }
 
 func getTestMillisecondConfig() config.RainDropConfig {
 	return config.RainDropConfig{
-		DbConfig:            getTestMySqlConfig(),
-		Logger:              getTestStdoutLogger(),
-		ServicePort:         port,
-		TimeUnit:            consts.TimeUnitMillisecond,
-		StartTimeStamp:      time.Date(2023, 1, 1, 0, 0, 0, 0, time.Local),
-		TimeLength:          44,
-		PriorityExistWorkId: false,
-		WorkIdLength:        workerLength,
-		ServiceMinWorkId:    minWorkerId,
-		ServiceMaxWorkId:    maxWorkerId,
+		DbConfig:                getTestMySqlConfig(),
+		Logger:                  getTestStdoutLogger(),
+		ServicePort:             port,
+		TimeUnit:                consts.TimeUnitMillisecond,
+		StartTimeStamp:          time.Date(2023, 1, 1, 0, 0, 0, 0, time.Local),
+		TimeLength:              44,
+		PriorityEqualCodeWorkId: false,
+		WorkIdLength:            workerLength,
+		ServiceMinWorkId:        minWorkerId,
+		ServiceMaxWorkId:        maxWorkerId,
 	}
 }
 

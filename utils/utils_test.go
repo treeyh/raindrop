@@ -16,3 +16,9 @@ func TestGetLocalIP(t *testing.T) {
 	}
 	t.Log(ip)
 }
+
+func TestGetMacAddrs(t *testing.T) {
+	macs := GetMacAddrs()
+
+	t.Log(macs)
+}
