@@ -36,23 +36,22 @@ func (t *Ticket) Start(ctx context.Context) {
 
 // calcNowTimeSeq 计算当前时间戳流水
 func calcNowTimeSeq(ctx context.Context) error {
-	seq := time.Now().UnixMilli() - startTime
+	seq := time.Now().UnixMilli()
 	if seq < 0 {
 		log.Error(ctx, consts.ErrMsgStartTimeStampError.Error())
 	}
 	switch timeUnit {
-	case consts.TimeUnitMillisecond:
-		nowTimeSeq = seq
 	case consts.TimeUnitSecond:
-		nowTimeSeq = seq / 1000
+		seq = seq / 1000
 	case consts.TimeUnitMinute:
-		nowTimeSeq = seq / (1000 * 60)
+		seq = seq / (1000 * 60)
 	case consts.TimeUnitHour:
-		nowTimeSeq = seq / (1000 * 60 * 60)
+		seq = seq / (1000 * 60 * 60)
 	case consts.TimeUnitDay:
-		nowTimeSeq = seq / (1000 * 60 * 60 * 24)
+		seq = seq / (1000 * 60 * 60 * 24)
 	}
-	log.Debug(ctx, "nowTimeSeq: "+strconv.FormatInt(nowTimeSeq, 10))
+	nowTimeSeq.Store(seq)
+	log.Debug(ctx, "nowTimeSeq: "+strconv.FormatInt(seq, 10))
 	return nil
 }
 

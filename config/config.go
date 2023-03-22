@@ -183,7 +183,7 @@ func CheckConfig(ctx context.Context, conf RainDropConfig) error {
 	}
 
 	if time.Now().Unix() < conf.StartTimeStamp.Unix() {
-		return errors.New(consts.ErrMsgStartTimeStampError)
+		return consts.ErrMsgStartTimeStampError
 	}
 
 	return nil

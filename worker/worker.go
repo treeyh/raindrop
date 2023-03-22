@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"fmt"
 	"github.com/treeyh/raindrop/config"
 	"github.com/treeyh/raindrop/consts"
 	"github.com/treeyh/raindrop/db"
@@ -19,11 +20,17 @@ var (
 	timeUnit   consts.TimeUnit
 	log        logger.ILogger
 	worker     *model.IdGeneratorWorker
-	// 最大的id序列值
-	maxIdSeq atomic.Int64
 
+	workerId int64
+	// 时间戳位移位数
+	timeShift int
+	// workerId位移位数
+	workerIdShift int
+	// 最大的id序列值
+	maxIdSeq int64
 	// 开始计算时间戳，毫秒
-	startTime atomic.Int64
+	startTime int64
+
 	// 当前时间流水，当前时刻毫秒 - startTime,换算时间单位取整
 	nowTimeSeq atomic.Int64
 
@@ -64,11 +71,13 @@ func Init(ctx context.Context, conf config.RainDropConfig) error {
 		return consts.ErrMsgWorkersNotAvailable
 	}
 
-	startTime.Store(conf.StartTimeStamp.UnixMilli())
+	startTime = conf.StartTimeStamp.UnixMilli()
 	err = calcNowTimeSeq(ctx)
 	if err != nil {
 		return err
 	}
+
+	initParams(ctx, conf)
 
 	if v := ctx.Value(consts.ProjectName); v != nil {
 		// 支持单元测试，跳过启动心跳线程
@@ -91,6 +100,18 @@ func GetWorkerId(ctx context.Context) int64 {
 // GetNowTimeSeq 获得NowTimeSeq
 func GetNowTimeSeq(ctx context.Context) int64 {
 	return nowTimeSeq.Load()
+}
+
+// initParams 初始化参数
+func initParams(ctx context.Context, conf config.RainDropConfig) {
+	workerId = worker.Id
+	seqLength := 63 - conf.WorkIdLength - conf.TimeLength
+
+	// 计算同一时刻最大流水号
+	maxIdSeq = (1 << seqLength) - 1
+
+	workerIdShift = seqLength
+	timeShift = seqLength + conf.WorkIdLength
 }
 
 // activateWorker 激活worker
@@ -140,13 +161,76 @@ func activateWorker(ctx context.Context, conf config.RainDropConfig) (*model.IdG
 	return nil, nil
 }
 
-func NewId(ctx context.Context) (error, int64) {
+func NewId(ctx context.Context) (int64, error) {
 	newIdLock.Lock()
 	defer newIdLock.Unlock()
 
-	return nil, 0
+	timestamp := nowTimeSeq.Load()
+	lastTimeSeq := newIdLastTimeSeq.Load()
+
+	if lastTimeSeq > timestamp {
+		log.Error(ctx, fmt.Sprintf("timeUnit:%d, lastTimeSeq: %d, timestamp: %d ", int(timeUnit), lastTimeSeq, timestamp),
+			consts.ErrMsgServerClockBackwardsError)
+		if timeUnit != consts.TimeUnitMillisecond {
+			// 闰秒场景
+			offset := lastTimeSeq - timestamp
+			if offset > 1000 {
+				return 0, consts.ErrMsgServerClockBackwardsError
+			} else {
+				time.Sleep(time.Duration(offset+10) * time.Millisecond)
+				timestamp = nowTimeSeq.Load()
+				if lastTimeSeq > timestamp {
+					return 0, consts.ErrMsgServerClockBackwardsError
+				}
+			}
+		} else {
+			return 0, consts.ErrMsgServerClockBackwardsError
+		}
+	}
+
+	var seq int64
+	if lastTimeSeq == timestamp {
+		// 时间戳未发生变化，需要增加newIdSeq
+		seq = newIdSeq.Add(1)
+		if seq > maxIdSeq {
+			// 超过了序列最大值
+			if timeUnit != consts.TimeUnitMillisecond && timeUnit != consts.TimeUnitSecond {
+				// 不是毫秒或秒时间单位，不等待直接返回错误
+				log.Error(ctx, fmt.Sprintf("timeUnit: %d, timeSeq: %d, seq: %d, maxIdSeq: %d",
+					int(timeUnit), timestamp, seq, maxIdSeq))
+				return 0, consts.ErrMsgIdSeqReachesMaxValueError
+			}
+
+			// 毫秒，秒还能抢救一下
+			if timeUnit == consts.TimeUnitMillisecond {
+				for {
+					timestamp = nowTimeSeq.Load()
+					if timestamp > lastTimeSeq {
+						break
+					}
+				}
+			} else {
+				for {
+					time.Sleep(time.Duration(10) * time.Millisecond)
+					timestamp = nowTimeSeq.Load()
+					if timestamp > lastTimeSeq {
+						break
+					}
+				}
+			}
+			seq = 0
+			newIdSeq.Store(0)
+		}
+	} else {
+		seq = 0
+		newIdSeq.Store(0)
+	}
+
+	newIdLastTimeSeq.Store(timestamp)
+
+	return ((timestamp - startTime) << timeShift) | (workerId << workerIdShift) | seq, nil
 }
 
-func NewIdByCode(ctx context.Context, code string) (error, int64) {
-	return nil, 0
+func NewIdByCode(ctx context.Context, code string) (int64, error) {
+	return 0, nil
 }

@@ -39,24 +39,24 @@ func Init(ctx context.Context, conf config.RainDropConfig) {
 }
 
 // NewId 获取新id
-func NewId() (error, int64) {
+func NewId() (int64, error) {
 	ctx := context.Background()
 	return NewIdContext(ctx)
 }
 
 // NewIdContext 获取新id
-func NewIdContext(ctx context.Context) (error, int64) {
+func NewIdContext(ctx context.Context) (int64, error) {
 	return worker.NewId(ctx)
 }
 
 // NewIdByCode 基于code获取新id
-func NewIdByCode(code string) (error, int64) {
+func NewIdByCode(code string) (int64, error) {
 	ctx := context.Background()
 	return NewIdContextByCode(ctx, code)
 }
 
 // NewIdContextByCode 基于code获取新id
-func NewIdContextByCode(ctx context.Context, code string) (error, int64) {
+func NewIdContextByCode(ctx context.Context, code string) (int64, error) {
 	return worker.NewIdByCode(ctx, code)
 }
 
