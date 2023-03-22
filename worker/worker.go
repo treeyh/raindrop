@@ -2,7 +2,6 @@ package worker
 
 import (
 	"context"
-	"errors"
 	"github.com/treeyh/raindrop/config"
 	"github.com/treeyh/raindrop/consts"
 	"github.com/treeyh/raindrop/db"
@@ -11,6 +10,7 @@ import (
 	"github.com/treeyh/raindrop/utils"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -19,15 +19,29 @@ var (
 	timeUnit   consts.TimeUnit
 	log        logger.ILogger
 	worker     *model.IdGeneratorWorker
+	// 最大的id序列值
+	maxIdSeq atomic.Int64
 
 	// 开始计算时间戳，毫秒
-	startTime int64
+	startTime atomic.Int64
 	// 当前时间流水，当前时刻毫秒 - startTime,换算时间单位取整
-	nowTimeSeq int64
+	nowTimeSeq atomic.Int64
 
-	_globalLock  sync.Mutex
-	_codeSeqMap  = make(map[string]int64)
-	_codeLockMap = make(map[string]sync.Mutex)
+	// 获取新id的锁
+	newIdLock sync.Mutex
+	// 上次的获取新id时间序列
+	newIdLastTimeSeq atomic.Int64
+	// 获取新id同一时间的自增序列
+	newIdSeq atomic.Int64
+
+	// 基于code获取新id的生成code锁的锁
+	newCodeLockLock sync.Mutex
+	// 获取基于code新id的锁
+	newIdByCodeLockMap = make(map[string]sync.Mutex)
+	// 上次的获取基于code新id时间序列
+	newIdByCodeTimeSeqMap = make(map[string]atomic.Int64)
+	// 获取基于code新id同一时间的自增序列
+	newIdByCodeSeqMap = make(map[string]atomic.Int64)
 )
 
 // Init 初始化worker
@@ -46,11 +60,11 @@ func Init(ctx context.Context, conf config.RainDropConfig) error {
 		if err != nil {
 			return err
 		}
-		log.Error(ctx, consts.ErrMsgWorkersNotAvailable)
-		return errors.New(consts.ErrMsgWorkersNotAvailable)
+		log.Error(ctx, consts.ErrMsgWorkersNotAvailable.Error())
+		return consts.ErrMsgWorkersNotAvailable
 	}
 
-	startTime = conf.StartTimeStamp.UnixMilli()
+	startTime.Store(conf.StartTimeStamp.UnixMilli())
 	err = calcNowTimeSeq(ctx)
 	if err != nil {
 		return err
@@ -76,7 +90,7 @@ func GetWorkerId(ctx context.Context) int64 {
 
 // GetNowTimeSeq 获得NowTimeSeq
 func GetNowTimeSeq(ctx context.Context) int64 {
-	return nowTimeSeq
+	return nowTimeSeq.Load()
 }
 
 // activateWorker 激活worker
@@ -113,8 +127,8 @@ func activateWorker(ctx context.Context, conf config.RainDropConfig) (*model.IdG
 		return nil, err
 	}
 	if len(workers) <= 0 {
-		log.Error(ctx, consts.ErrMsgWorkersNotAvailable)
-		return nil, errors.New(consts.ErrMsgWorkersNotAvailable)
+		log.Error(ctx, consts.ErrMsgWorkersNotAvailable.Error())
+		return nil, consts.ErrMsgWorkersNotAvailable
 	}
 
 	for _, w := range workers {
@@ -124,4 +138,15 @@ func activateWorker(ctx context.Context, conf config.RainDropConfig) (*model.IdG
 		}
 	}
 	return nil, nil
+}
+
+func NewId(ctx context.Context) (error, int64) {
+	newIdLock.Lock()
+	defer newIdLock.Unlock()
+
+	return nil, 0
+}
+
+func NewIdByCode(ctx context.Context, code string) (error, int64) {
+	return nil, 0
 }

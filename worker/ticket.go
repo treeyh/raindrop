@@ -38,7 +38,7 @@ func (t *Ticket) Start(ctx context.Context) {
 func calcNowTimeSeq(ctx context.Context) error {
 	seq := time.Now().UnixMilli() - startTime
 	if seq < 0 {
-		log.Error(ctx, consts.ErrMsgStartTimeStampError)
+		log.Error(ctx, consts.ErrMsgStartTimeStampError.Error())
 	}
 	switch timeUnit {
 	case consts.TimeUnitMillisecond:
@@ -83,7 +83,7 @@ func heartbeat(ctx context.Context) error {
 		log.Debug(ctx, "worker heartbeat worker: "+utils.ToJsonIgnoreError(w))
 		if w.UpdateTime.Unix() > w.HeartbeatTime.Unix()+consts.HeartbeatTimeInterval ||
 			w.UpdateTime.Unix() < w.HeartbeatTime.Unix()-consts.HeartbeatTimeInterval {
-			log.Error(ctx, consts.ErrMsgDatabaseServerTimeInterval+". worker:"+utils.ToJsonIgnoreError(w))
+			log.Error(ctx, consts.ErrMsgDatabaseServerTimeInterval.Error()+". worker:"+utils.ToJsonIgnoreError(w))
 		}
 		worker = w
 	}

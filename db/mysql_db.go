@@ -26,7 +26,7 @@ func (m *MySqlDb) GetNowTime(ctx context.Context) (time.Time, error) {
 	err := _dbConn.QueryRowContext(ctx, "SELECT NOW() as now;").Scan(&now)
 
 	if err != nil {
-		log.Error(ctx, consts.ErrMsgDatabaseGetNowTimeFail, err)
+		log.Error(ctx, consts.ErrMsgDatabaseGetNowTimeFail.Error(), err)
 		return time.Now(), err
 	}
 	return now, err
@@ -72,7 +72,7 @@ func (m *MySqlDb) CreateTable(ctx context.Context) error {
 
 	_, err := _dbConn.ExecContext(ctx, sql)
 	if err != nil {
-		log.Error(ctx, consts.ErrMsgDatabaseCreateTableFail, err)
+		log.Error(ctx, consts.ErrMsgDatabaseCreateTableFail.Error(), err)
 	}
 	return err
 }
@@ -94,7 +94,7 @@ func (m *MySqlDb) InitWorkers(ctx context.Context, beginId int64, endId int64) e
 
 	_, err := _dbConn.ExecContext(ctx, sql)
 	if err != nil {
-		log.Error(ctx, consts.ErrMsgDatabaseInitWorkersFail, err)
+		log.Error(ctx, consts.ErrMsgDatabaseInitWorkersFail.Error(), err)
 	}
 	return err
 }

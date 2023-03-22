@@ -2,15 +2,12 @@ package raindrop
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"github.com/treeyh/raindrop/config"
 	"github.com/treeyh/raindrop/consts"
 	"github.com/treeyh/raindrop/db"
 	"github.com/treeyh/raindrop/logger"
 	"github.com/treeyh/raindrop/utils"
 	"github.com/treeyh/raindrop/worker"
-	"strconv"
 	"time"
 )
 
@@ -42,25 +39,25 @@ func Init(ctx context.Context, conf config.RainDropConfig) {
 }
 
 // NewId 获取新id
-func NewId() int64 {
+func NewId() (error, int64) {
 	ctx := context.Background()
 	return NewIdContext(ctx)
 }
 
 // NewIdContext 获取新id
-func NewIdContext(ctx context.Context) int64 {
-	return 0
+func NewIdContext(ctx context.Context) (error, int64) {
+	return worker.NewId(ctx)
 }
 
 // NewIdByCode 基于code获取新id
-func NewIdByCode(code string) int64 {
+func NewIdByCode(code string) (error, int64) {
 	ctx := context.Background()
 	return NewIdContextByCode(ctx, code)
 }
 
 // NewIdContextByCode 基于code获取新id
-func NewIdContextByCode(ctx context.Context, code string) int64 {
-	return 0
+func NewIdContextByCode(ctx context.Context, code string) (error, int64) {
+	return worker.NewIdByCode(ctx, code)
 }
 
 // initLogger 初始化日志
@@ -79,7 +76,7 @@ func initDb(ctx context.Context, conf config.RainDropConfig) error {
 		err = db.InitMySqlDb(ctx, conf.DbConfig, log)
 	} else {
 		log.Fatal(ctx, "raindrop not support ["+conf.DbConfig.DbType+"] db type.")
-		err = errors.New(consts.ErrMsgDatabaseInitFail)
+		err = consts.ErrMsgDatabaseInitFail
 	}
 	if err != nil {
 		log.Error(ctx, err.Error(), err)
@@ -119,8 +116,8 @@ func checkDbTimeInterval(ctx context.Context) error {
 	}
 
 	if now.Unix() > (dbNow.Unix()+consts.DatabaseTimeInterval) || now.Unix() < (dbNow.Unix()-consts.DatabaseTimeInterval) {
-		log.Error(ctx, fmt.Sprintf(consts.ErrMsgDatabaseServerTimeInterval, strconv.Itoa(consts.DatabaseTimeInterval)))
-		return errors.New(consts.ErrMsgDatabaseServerTimeInterval)
+		log.Error(ctx, consts.ErrMsgDatabaseServerTimeInterval.Error())
+		return consts.ErrMsgDatabaseServerTimeInterval
 	}
 	return nil
 }

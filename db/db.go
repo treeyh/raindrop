@@ -55,7 +55,7 @@ func InitMySqlDb(ctx context.Context, dbConfig config.RainDropDbConfig, l logger
 	var err error
 	_dbConn, err = sql.Open(dbConfig.DbType, dbConfig.DbUrl)
 	if err != nil {
-		log.Error(ctx, consts.ErrMsgDatabaseInitFail, err)
+		log.Error(ctx, consts.ErrMsgDatabaseInitFail.Error(), err)
 		return err
 	}
 
@@ -64,7 +64,7 @@ func InitMySqlDb(ctx context.Context, dbConfig config.RainDropDbConfig, l logger
 
 	err = _dbConn.Ping()
 	if err != nil {
-		log.Error(ctx, consts.ErrMsgDatabaseInitFail, err)
+		log.Error(ctx, consts.ErrMsgDatabaseInitFail.Error(), err)
 		return err
 	}
 

@@ -26,22 +26,6 @@ const (
 )
 
 const (
-	ErrMsgDatabaseInitFail = "database initialization failed"
-
-	ErrMsgDatabaseGetNowTimeFail = "get now time database fail"
-
-	ErrMsgDatabaseCreateTableFail = "create table fail"
-
-	ErrMsgDatabaseInitWorkersFail = "initialization workers fail"
-
-	ErrMsgDatabaseServerTimeInterval = "Server and database time differences of more than %s seconds"
-
-	ErrMsgWorkersNotAvailable = "Workers not available"
-
-	ErrMsgStartTimeStampError = "StartTimeStamp is greater than the current time"
-)
-
-const (
 	// DatabaseTimeInterval 服务器与DB时间允许间隔，秒
 	DatabaseTimeInterval = 30
 
