@@ -13,7 +13,7 @@ import (
 const (
 	port = 8888
 
-	workerLength = 5
+	workerLength = 4
 
 	minWorkerId = 10
 
@@ -48,7 +48,7 @@ func getTestMySqlConfig() config.RainDropDbConfig {
 
 func getTestStdoutLogger() logger.ILogger {
 	d := logger.DefaultWriter{}
-	return logger.New(&d, logger.Debug, true)
+	return logger.New(&d, logger.Info, true)
 }
 
 func getTestSecondConfig() config.RainDropConfig {

@@ -17,6 +17,11 @@ const (
 )
 
 const (
+	IdModeSnowflake     = "snowflake"
+	IdModeNumberSection = "numbersection"
+)
+
+const (
 	DbTypeMySql = "mysql"
 
 	DbTypePostgreSQL = "postgresql"

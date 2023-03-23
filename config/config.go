@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/treeyh/raindrop/consts"
 	"github.com/treeyh/raindrop/logger"
+	"strings"
 	"time"
 )
 
@@ -17,6 +18,9 @@ type RainDropDbConfig struct {
 }
 
 type RainDropConfig struct {
+
+	// IdMode Id生成模式， Snowflake：雪花算法；NumberSection：号段模式，目前仅支持Snowflake
+	IdMode string `json:"idMode"`
 
 	// DbConfig 数据库配置
 	DbConfig RainDropDbConfig `json:"dbConfig"`
@@ -115,7 +119,12 @@ type RainDropConfig struct {
 	ServiceMaxWorkId int64 `json:"serviceMaxWorkId"`
 }
 
-func CheckConfig(ctx context.Context, conf RainDropConfig) error {
+func CheckConfig(ctx context.Context, conf *RainDropConfig) error {
+	idMode := strings.ToLower(conf.IdMode)
+	if idMode != consts.IdModeSnowflake && idMode != consts.IdModeNumberSection {
+		conf.IdMode = consts.IdModeSnowflake
+	}
+
 	if conf.ServicePort < 1 || conf.ServicePort > 65535 {
 		return errors.New("ServicePort range between 1 and 65535")
 	}
@@ -126,20 +135,20 @@ func CheckConfig(ctx context.Context, conf RainDropConfig) error {
 			return errors.New("When TimeUnit is millisecond, TimeLength must be between 41 and 50")
 		}
 	case consts.TimeUnitSecond:
-		if conf.TimeLength < 31 || conf.TimeLength > 40 {
-			return errors.New("When TimeUnit is second, TimeLength must be between 31 and 40")
+		if conf.TimeLength < 31 || conf.TimeLength > 50 {
+			return errors.New("When TimeUnit is second, TimeLength must be between 31 and 50")
 		}
 	case consts.TimeUnitMinute:
-		if conf.TimeLength < 25 || conf.TimeLength > 34 {
-			return errors.New("When TimeUnit is minute, TimeLength must be between 25 and 34")
+		if conf.TimeLength < 25 || conf.TimeLength > 44 {
+			return errors.New("When TimeUnit is minute, TimeLength must be between 25 and 44")
 		}
 	case consts.TimeUnitHour:
-		if conf.TimeLength < 19 || conf.TimeLength > 28 {
-			return errors.New("When TimeUnit is hour, TimeLength must be between 19 and 28")
+		if conf.TimeLength < 19 || conf.TimeLength > 40 {
+			return errors.New("When TimeUnit is hour, TimeLength must be between 19 and 40")
 		}
 	case consts.TimeUnitDay:
-		if conf.TimeLength < 15 || conf.TimeLength > 24 {
-			return errors.New("When TimeUnit is day, TimeLength must be between 15 and 24")
+		if conf.TimeLength < 15 || conf.TimeLength > 40 {
+			return errors.New("When TimeUnit is day, TimeLength must be between 15 and 40")
 		}
 	}
 

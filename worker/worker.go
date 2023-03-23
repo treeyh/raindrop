@@ -10,6 +10,7 @@ import (
 	"github.com/treeyh/raindrop/model"
 	"github.com/treeyh/raindrop/utils"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -21,6 +22,8 @@ var (
 	log        logger.ILogger
 	worker     *model.IdGeneratorWorker
 
+	// idMode id模式
+	idMode   string
 	workerId int64
 	// 时间戳位移位数
 	timeShift int
@@ -104,6 +107,8 @@ func GetNowTimeSeq(ctx context.Context) int64 {
 
 // initParams 初始化参数
 func initParams(ctx context.Context, conf config.RainDropConfig) {
+	idMode = strings.ToLower(conf.IdMode)
+
 	workerId = worker.Id
 	seqLength := 63 - conf.WorkIdLength - conf.TimeLength
 
@@ -112,6 +117,9 @@ func initParams(ctx context.Context, conf config.RainDropConfig) {
 
 	workerIdShift = seqLength
 	timeShift = seqLength + conf.WorkIdLength
+
+	log.Info(ctx, fmt.Sprintf("idMode:%s, workerId:%d, seqLength:%d, workerLength:%d, timeLength:%d, maxIdSeq:%d, workerIdShift: %d, timeShift:%d",
+		idMode, workerId, seqLength, conf.WorkIdLength, conf.TimeLength, maxIdSeq, workerIdShift, timeShift))
 }
 
 // activateWorker 激活worker
@@ -172,11 +180,13 @@ func NewId(ctx context.Context) (int64, error) {
 		log.Error(ctx, fmt.Sprintf("timeUnit:%d, lastTimeSeq: %d, timestamp: %d ", int(timeUnit), lastTimeSeq, timestamp),
 			consts.ErrMsgServerClockBackwardsError)
 		if timeUnit != consts.TimeUnitMillisecond {
-			// 闰秒场景
+			// 闰秒场景 或 NTP时钟回拨场景
 			offset := lastTimeSeq - timestamp
 			if offset > 1000 {
 				return 0, consts.ErrMsgServerClockBackwardsError
 			} else {
+				// 1秒内尝试等待
+				log.Debug(ctx, "leap second sleep %d", timestamp)
 				time.Sleep(time.Duration(offset+10) * time.Millisecond)
 				timestamp = nowTimeSeq.Load()
 				if lastTimeSeq > timestamp {
@@ -203,6 +213,7 @@ func NewId(ctx context.Context) (int64, error) {
 
 			// 毫秒，秒还能抢救一下
 			if timeUnit == consts.TimeUnitMillisecond {
+				log.Debug(ctx, "millisecond unit sleep %d", timestamp)
 				for {
 					timestamp = nowTimeSeq.Load()
 					if timestamp > lastTimeSeq {
@@ -210,6 +221,7 @@ func NewId(ctx context.Context) (int64, error) {
 					}
 				}
 			} else {
+				log.Debug(ctx, "second unit sleep %d", timestamp)
 				for {
 					time.Sleep(time.Duration(10) * time.Millisecond)
 					timestamp = nowTimeSeq.Load()
@@ -227,7 +239,6 @@ func NewId(ctx context.Context) (int64, error) {
 	}
 
 	newIdLastTimeSeq.Store(timestamp)
-
 	return ((timestamp - startTime) << timeShift) | (workerId << workerIdShift) | seq, nil
 }
 

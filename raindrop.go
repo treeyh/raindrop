@@ -21,7 +21,7 @@ func Init(ctx context.Context, conf config.RainDropConfig) {
 	initLogger(ctx, conf)
 	log.Info(ctx, "raindrop init. config: "+utils.ToJsonIgnoreError(conf))
 
-	err := config.CheckConfig(ctx, conf)
+	err := config.CheckConfig(ctx, &conf)
 	if err != nil {
 		log.Fatal(ctx, "config check fail", err)
 	}
