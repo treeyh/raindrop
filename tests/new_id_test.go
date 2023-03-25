@@ -8,6 +8,25 @@ import (
 	"time"
 )
 
+// TestSimpleNewId 获取id
+func TestSimpleNewId(t *testing.T) {
+	ctx := getTestContext()
+	conf := getTestSimpleMillisecondConfig()
+
+	dropTestWorkerTable(ctx)
+
+	raindrop.Init(ctx, conf)
+	if worker.GetWorkerId(ctx) != minWorkerId {
+		t.Fatalf("%s worker id get error.", t.Name())
+	}
+
+	t.Logf("%s pass.", t.Name())
+
+	batchNewId(ctx, t, 0, true)
+
+	time.Sleep(time.Duration(60) * time.Second)
+}
+
 // TestNewId 获取id
 func TestNewId(t *testing.T) {
 	ctx := getTestContext()
@@ -23,13 +42,13 @@ func TestNewId(t *testing.T) {
 	t.Logf("%s pass.", t.Name())
 
 	for i := 0; i < 16; i++ {
-		go batchNewId(ctx, t, i)
+		go batchNewId(ctx, t, i, false)
 	}
 
 	time.Sleep(time.Duration(60) * time.Second)
 }
 
-func batchNewId(ctx context.Context, t *testing.T, index int) {
+func batchNewId(ctx context.Context, t *testing.T, index int, logFlag bool) {
 
 	idMap := make(map[int64]bool)
 	start := time.Now().UnixMilli()
@@ -42,9 +61,9 @@ func batchNewId(ctx context.Context, t *testing.T, index int) {
 			t.Errorf("%s duplicate id generated: %d", t.Name(), id)
 		}
 		idMap[id] = true
-		//if i%100000 == 0 {
-		//	t.Logf("%s new id index: %d id: %d ", t.Name(), i, id)
-		//}
+		if logFlag && i%100000 == 0 {
+			t.Logf("%s new id index: %d id: %d ", t.Name(), i, id)
+		}
 	}
 	end := time.Now().UnixMilli()
 	t.Logf("index:%d new id start:%d, end:%d, time: %d", index, start, end, end-start)

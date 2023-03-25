@@ -51,33 +51,62 @@ func getTestStdoutLogger() logger.ILogger {
 	return logger.New(&d, logger.Info, true)
 }
 
+func getTestStdoutDebugLogger() logger.ILogger {
+	d := logger.DefaultWriter{}
+	return logger.New(&d, logger.Debug, true)
+}
+
 func getTestSecondConfig() config.RainDropConfig {
 	return config.RainDropConfig{
+		IdMode:                  consts.IdModeSnowflake,
 		DbConfig:                getTestMySqlConfig(),
 		Logger:                  getTestStdoutLogger(),
 		ServicePort:             port,
 		TimeUnit:                consts.TimeUnitSecond,
 		StartTimeStamp:          time.Date(2023, 1, 1, 0, 0, 0, 0, time.Local),
-		TimeLength:              35,
+		TimeStampLength:         35,
 		PriorityEqualCodeWorkId: false,
 		WorkIdLength:            workerLength,
 		ServiceMinWorkId:        minWorkerId,
 		ServiceMaxWorkId:        maxWorkerId,
+		TimeBackBitValue:        0,
+		EndBitValue:             0,
+	}
+}
+
+func getTestSimpleMillisecondConfig() config.RainDropConfig {
+	return config.RainDropConfig{
+		IdMode:                  consts.IdModeSnowflake,
+		DbConfig:                getTestMySqlConfig(),
+		Logger:                  getTestStdoutDebugLogger(),
+		ServicePort:             port,
+		TimeUnit:                consts.TimeUnitMillisecond,
+		StartTimeStamp:          time.Date(2023, 1, 1, 0, 0, 0, 0, time.Local),
+		TimeStampLength:         50,
+		PriorityEqualCodeWorkId: false,
+		WorkIdLength:            workerLength,
+		ServiceMinWorkId:        minWorkerId,
+		ServiceMaxWorkId:        maxWorkerId,
+		TimeBackBitValue:        0,
+		EndBitValue:             0,
 	}
 }
 
 func getTestMillisecondConfig() config.RainDropConfig {
 	return config.RainDropConfig{
+		IdMode:                  consts.IdModeSnowflake,
 		DbConfig:                getTestMySqlConfig(),
 		Logger:                  getTestStdoutLogger(),
 		ServicePort:             port,
 		TimeUnit:                consts.TimeUnitMillisecond,
 		StartTimeStamp:          time.Date(2023, 1, 1, 0, 0, 0, 0, time.Local),
-		TimeLength:              44,
+		TimeStampLength:         44,
 		PriorityEqualCodeWorkId: false,
 		WorkIdLength:            workerLength,
 		ServiceMinWorkId:        minWorkerId,
 		ServiceMaxWorkId:        maxWorkerId,
+		TimeBackBitValue:        0,
+		EndBitValue:             0,
 	}
 }
 

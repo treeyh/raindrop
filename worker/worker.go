@@ -25,13 +25,23 @@ var (
 	// idMode id模式
 	idMode   string
 	workerId int64
-	// 时间戳位移位数
-	timeShift int
-	// workerId位移位数
+	// timeBackBitValue 时间回拨值
+	timeBackBitValue atomic.Int64
+	// endBitValue 最后预留位bit值
+	endBitValue int64
+
+	// timeStampShift 时间戳位移位数
+	timeStampShift int
+	// workerId 位移位数
 	workerIdShift int
-	// 最大的id序列值
+	// timeBackShift 时间回拨位移位数
+	timeBackShift int
+	// seqShift 流水号移位数
+	seqShift int
+
+	// maxIdSeq 最大的id序列值
 	maxIdSeq int64
-	// 开始计算时间戳，毫秒
+	// startTime 开始计算时间戳，毫秒
 	startTime int64
 
 	// 当前时间流水，当前时刻毫秒 - startTime,换算时间单位取整
@@ -108,18 +118,24 @@ func GetNowTimeSeq(ctx context.Context) int64 {
 // initParams 初始化参数
 func initParams(ctx context.Context, conf config.RainDropConfig) {
 	idMode = strings.ToLower(conf.IdMode)
+	timeBackBitValue.Store(int64(conf.TimeBackBitValue))
+	endBitValue = int64(conf.EndBitValue)
 
 	workerId = worker.Id
-	seqLength := 63 - conf.WorkIdLength - conf.TimeLength
+	seqLength := consts.IdBitLength - conf.TimeStampLength - conf.WorkIdLength - consts.TimeBackBitLength - consts.EndPlaceBitLength
 
 	// 计算同一时刻最大流水号
 	maxIdSeq = (1 << seqLength) - 1
 
-	workerIdShift = seqLength
-	timeShift = seqLength + conf.WorkIdLength
+	seqShift = consts.EndPlaceBitLength
+	timeBackShift = seqLength + seqShift
+	workerIdShift = timeBackShift + consts.TimeBackBitLength
+	timeStampShift = workerIdShift + conf.WorkIdLength
 
-	log.Info(ctx, fmt.Sprintf("idMode:%s, workerId:%d, seqLength:%d, workerLength:%d, timeLength:%d, maxIdSeq:%d, workerIdShift: %d, timeShift:%d",
-		idMode, workerId, seqLength, conf.WorkIdLength, conf.TimeLength, maxIdSeq, workerIdShift, timeShift))
+	log.Info(ctx, fmt.Sprintf("idMode:%s, timeBackBitValue:%d, endBitValue:%d, workerId:%d, seqLength:%d, "+
+		"workerLength:%d, timeLength:%d, maxIdSeq:%d, seqShift: %d, timeBackShift: %d, workerIdShift: %d, timeStampShift:%d",
+		idMode, timeBackBitValue.Load(), endBitValue, workerId, seqLength,
+		conf.WorkIdLength, conf.TimeStampLength, maxIdSeq, seqShift, timeBackShift, workerIdShift, timeStampShift))
 }
 
 // activateWorker 激活worker
@@ -173,30 +189,9 @@ func NewId(ctx context.Context) (int64, error) {
 	newIdLock.Lock()
 	defer newIdLock.Unlock()
 
+	timeBackValue := timeBackBitValue.Load()
 	timestamp := nowTimeSeq.Load()
 	lastTimeSeq := newIdLastTimeSeq.Load()
-
-	if lastTimeSeq > timestamp {
-		log.Error(ctx, fmt.Sprintf("timeUnit:%d, lastTimeSeq: %d, timestamp: %d ", int(timeUnit), lastTimeSeq, timestamp),
-			consts.ErrMsgServerClockBackwardsError)
-		if timeUnit != consts.TimeUnitMillisecond {
-			// 闰秒场景 或 NTP时钟回拨场景
-			offset := lastTimeSeq - timestamp
-			if offset > 1000 {
-				return 0, consts.ErrMsgServerClockBackwardsError
-			} else {
-				// 1秒内尝试等待
-				log.Debug(ctx, "leap second sleep %d", timestamp)
-				time.Sleep(time.Duration(offset+10) * time.Millisecond)
-				timestamp = nowTimeSeq.Load()
-				if lastTimeSeq > timestamp {
-					return 0, consts.ErrMsgServerClockBackwardsError
-				}
-			}
-		} else {
-			return 0, consts.ErrMsgServerClockBackwardsError
-		}
-	}
 
 	var seq int64
 	if lastTimeSeq == timestamp {
@@ -213,7 +208,7 @@ func NewId(ctx context.Context) (int64, error) {
 
 			// 毫秒，秒还能抢救一下
 			if timeUnit == consts.TimeUnitMillisecond {
-				log.Debug(ctx, "millisecond unit sleep %d", timestamp)
+				log.Debug(ctx, fmt.Sprintf("millisecond unit sleep %d", timestamp))
 				for {
 					timestamp = nowTimeSeq.Load()
 					if timestamp > lastTimeSeq {
@@ -221,7 +216,7 @@ func NewId(ctx context.Context) (int64, error) {
 					}
 				}
 			} else {
-				log.Debug(ctx, "second unit sleep %d", timestamp)
+				log.Debug(ctx, fmt.Sprintf("second unit sleep %d", timestamp))
 				for {
 					time.Sleep(time.Duration(10) * time.Millisecond)
 					timestamp = nowTimeSeq.Load()
@@ -238,8 +233,20 @@ func NewId(ctx context.Context) (int64, error) {
 		newIdSeq.Store(0)
 	}
 
+	if lastTimeSeq > timestamp {
+		log.Error(ctx, fmt.Sprintf("timeUnit:%d, lastTimeSeq: %d, timestamp: %d ", int(timeUnit), lastTimeSeq, timestamp),
+			consts.ErrMsgServerClockBackwardsError)
+		// timeBackValue 取反，避免重复
+		timeBackValue = timeBackValue ^ 1
+		timeBackBitValue.Store(timeBackValue)
+	}
 	newIdLastTimeSeq.Store(timestamp)
-	return ((timestamp - startTime) << timeShift) | (workerId << workerIdShift) | seq, nil
+
+	return ((timestamp - startTime) << timeStampShift) |
+		(workerId << workerIdShift) |
+		(timeBackValue << timeBackShift) |
+		(seq << seqShift) |
+		endBitValue, nil
 }
 
 func NewIdByCode(ctx context.Context, code string) (int64, error) {

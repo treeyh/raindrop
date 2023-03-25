@@ -37,7 +37,7 @@ type RainDropConfig struct {
 	// StartTimeStamp 起始时间，时间戳从该时间开始计时，格式：2020-01-01T00:00:00.000+0000
 	StartTimeStamp time.Time `json:"startTimeStamp"`
 
-	// TimeLength 时间戳位数
+	// TimeStampLength 时间戳位数
 	/*
 	  - timeUnit 为 1 时，取值范围 41-50 位，值越大每毫秒支持生成的 id 数就越少；
 	    - 41: 约 69.7 年，默认；
@@ -95,7 +95,7 @@ type RainDropConfig struct {
 	    - 23：约 22982.4 年；
 	    - 24：约 45964.9 年；
 	*/
-	TimeLength int `json:"timeLength"`
+	TimeStampLength int `json:"timeLength"`
 
 	// PriorityEqualCodeWorkId 优先相同code的workerId(毫秒，秒单位场景下生效)，默认：false。code格式为：{内网ip}:{ServicePort}#{Mac地址}
 	PriorityEqualCodeWorkId bool `json:"priorityEqualCodeWorkId"`
@@ -117,6 +117,12 @@ type RainDropConfig struct {
 
 	// ServiceMaxWorkId 服务的最大工作节点 id，默认 workIdLength 的最大值，需在 workIdLength 的定义范围内。
 	ServiceMaxWorkId int64 `json:"serviceMaxWorkId"`
+
+	// TimeBackBitValue 时间回拨位初始值，支持 `0` 或 `1`，默认： `0`；
+	TimeBackBitValue int `json:"timeBackBitValue"`
+
+	// EndBitValue 最后预留位的值，支持 `0` 或 `1`，默认： `0`
+	EndBitValue int `json:"endBitValue"`
 }
 
 func CheckConfig(ctx context.Context, conf *RainDropConfig) error {
@@ -125,35 +131,35 @@ func CheckConfig(ctx context.Context, conf *RainDropConfig) error {
 		conf.IdMode = consts.IdModeSnowflake
 	}
 
-	if conf.ServicePort < 1 || conf.ServicePort > 65535 {
-		return errors.New("ServicePort range between 1 and 65535")
+	if conf.ServicePort < 0 || conf.ServicePort > 65535 {
+		return errors.New("ServicePort range between 0 and 65535")
 	}
 
 	switch conf.TimeUnit {
 	case consts.TimeUnitMillisecond:
-		if conf.TimeLength < 41 || conf.TimeLength > 50 {
-			return errors.New("When TimeUnit is millisecond, TimeLength must be between 41 and 50")
+		if conf.TimeStampLength < 41 || conf.TimeStampLength > 55 {
+			return errors.New("When TimeUnit is millisecond, TimeLength must be between 41 and 55")
 		}
 	case consts.TimeUnitSecond:
-		if conf.TimeLength < 31 || conf.TimeLength > 50 {
-			return errors.New("When TimeUnit is second, TimeLength must be between 31 and 50")
+		if conf.TimeStampLength < 31 || conf.TimeStampLength > 55 {
+			return errors.New("When TimeUnit is second, TimeLength must be between 31 and 55")
 		}
 	case consts.TimeUnitMinute:
-		if conf.TimeLength < 25 || conf.TimeLength > 44 {
-			return errors.New("When TimeUnit is minute, TimeLength must be between 25 and 44")
+		if conf.TimeStampLength < 25 || conf.TimeStampLength > 50 {
+			return errors.New("When TimeUnit is minute, TimeLength must be between 25 and 50")
 		}
 	case consts.TimeUnitHour:
-		if conf.TimeLength < 19 || conf.TimeLength > 40 {
-			return errors.New("When TimeUnit is hour, TimeLength must be between 19 and 40")
+		if conf.TimeStampLength < 19 || conf.TimeStampLength > 45 {
+			return errors.New("When TimeUnit is hour, TimeLength must be between 19 and 45")
 		}
 	case consts.TimeUnitDay:
-		if conf.TimeLength < 15 || conf.TimeLength > 40 {
+		if conf.TimeStampLength < 15 || conf.TimeStampLength > 40 {
 			return errors.New("When TimeUnit is day, TimeLength must be between 15 and 40")
 		}
 	}
 
-	if conf.WorkIdLength < 4 || conf.WorkIdLength > 10 {
-		return errors.New("WorkIdLength takes values between 4 and 10")
+	if conf.WorkIdLength < 3 || conf.WorkIdLength > 10 {
+		return errors.New("WorkIdLength takes values between 3 and 10")
 	}
 
 	if conf.ServiceMinWorkId > conf.ServiceMaxWorkId {
@@ -161,33 +167,37 @@ func CheckConfig(ctx context.Context, conf *RainDropConfig) error {
 	}
 
 	switch conf.WorkIdLength {
+	case 3:
+		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 7 {
+			return errors.New("When WorkIdLength is 3, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 7")
+		}
 	case 4:
 		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 15 {
-			return errors.New("When WorkIdLength is 4, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 15.")
+			return errors.New("When WorkIdLength is 4, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 15")
 		}
 	case 5:
 		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 31 {
-			return errors.New("When WorkIdLength is 5, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 31.")
+			return errors.New("When WorkIdLength is 5, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 31")
 		}
 	case 6:
 		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 63 {
-			return errors.New("When WorkIdLength is 6, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 63.")
+			return errors.New("When WorkIdLength is 6, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 63")
 		}
 	case 7:
 		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 127 {
-			return errors.New("When WorkIdLength is 7, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 127.")
+			return errors.New("When WorkIdLength is 7, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 127")
 		}
 	case 8:
 		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 255 {
-			return errors.New("When WorkIdLength is 8, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 255.")
+			return errors.New("When WorkIdLength is 8, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 255")
 		}
 	case 9:
 		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 511 {
-			return errors.New("When WorkIdLength is 9, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 511.")
+			return errors.New("When WorkIdLength is 9, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 511")
 		}
 	case 10:
 		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 1023 {
-			return errors.New("When WorkIdLength is 10, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 1023.")
+			return errors.New("When WorkIdLength is 10, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 1023")
 		}
 	}
 
@@ -195,5 +205,17 @@ func CheckConfig(ctx context.Context, conf *RainDropConfig) error {
 		return consts.ErrMsgStartTimeStampError
 	}
 
+	if conf.TimeBackBitValue != 0 && conf.TimeBackBitValue != 1 {
+		return errors.New("TimeBackBitValue value is 0 or 1")
+	}
+
+	if conf.EndBitValue != 0 && conf.EndBitValue != 1 {
+		return errors.New("EndBitValue value is 0 or 1")
+	}
+
+	seqLength := consts.IdBitLength - conf.TimeStampLength - conf.WorkIdLength - consts.TimeBackBitLength - consts.EndPlaceBitLength
+	if seqLength < 1 {
+		return errors.New("Sequence number occupies at least 1 bit")
+	}
 	return nil
 }
