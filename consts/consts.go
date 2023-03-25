@@ -22,7 +22,6 @@ const (
 
 	IdBitLength       = 63
 	TimeBackBitLength = 1
-	EndPlaceBitLength = 1
 )
 
 const (

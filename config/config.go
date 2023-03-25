@@ -121,8 +121,11 @@ type RainDropConfig struct {
 	// TimeBackBitValue 时间回拨位初始值，支持 `0` 或 `1`，默认： `0`；
 	TimeBackBitValue int `json:"timeBackBitValue"`
 
-	// EndBitValue 最后预留位的值，支持 `0` 或 `1`，默认： `0`
-	EndBitValue int `json:"endBitValue"`
+	// EndBitsLength 可选预留位长度，支持`0`-`5`, 如果不需要可以设置为 `0`, 建议设置为 `1`
+	EndBitsLength int `json:"endBitsLength"`
+
+	// EndBitsValue 可选预留位的值，默认： `0`
+	EndBitsValue int `json:"endBitValue"`
 }
 
 func CheckConfig(ctx context.Context, conf *RainDropConfig) error {
@@ -209,11 +212,18 @@ func CheckConfig(ctx context.Context, conf *RainDropConfig) error {
 		return errors.New("TimeBackBitValue value is 0 or 1")
 	}
 
-	if conf.EndBitValue != 0 && conf.EndBitValue != 1 {
-		return errors.New("EndBitValue value is 0 or 1")
+	if conf.EndBitsLength < 0 || conf.EndBitsLength > 5 {
+		return errors.New("EndBitsLength needs to be between 0 and 5")
+	} else if conf.EndBitsLength > 0 {
+		maxEndBitsValue := (1 << conf.EndBitsLength) - 1
+		if conf.EndBitsValue > maxEndBitsValue {
+			return errors.New("EndBitsValue is greater than the maximum value of EndBitsLength")
+		}
+	} else {
+		conf.EndBitsValue = 0
 	}
 
-	seqLength := consts.IdBitLength - conf.TimeStampLength - conf.WorkIdLength - consts.TimeBackBitLength - consts.EndPlaceBitLength
+	seqLength := consts.IdBitLength - conf.TimeStampLength - conf.WorkIdLength - consts.TimeBackBitLength - conf.EndBitsLength
 	if seqLength < 1 {
 		return errors.New("Sequence number occupies at least 1 bit")
 	}

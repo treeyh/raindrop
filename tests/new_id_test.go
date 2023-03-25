@@ -8,6 +8,15 @@ import (
 	"time"
 )
 
+func TestA(t *testing.T) {
+	ticket := worker.NewTicket(time.Duration(1)*time.Millisecond, func(ctx context.Context) error {
+		t.Log(time.Now().UnixMilli())
+		return nil
+	})
+	ticket.Start(getTestContext())
+
+}
+
 // TestSimpleNewId 获取id
 func TestSimpleNewId(t *testing.T) {
 	ctx := getTestContext()
@@ -22,9 +31,18 @@ func TestSimpleNewId(t *testing.T) {
 
 	t.Logf("%s pass.", t.Name())
 
-	batchNewId(ctx, t, 0, true)
+	//batchNewId(ctx, t, 0, true)
 
-	time.Sleep(time.Duration(60) * time.Second)
+	time.Sleep(time.Duration(10) * time.Second)
+
+	last := int64(0)
+	for i, value := range worker.TimeSeqList {
+		intval := value - last
+		t.Logf("%d=%d, %d", value, intval, i%2)
+		last = value
+	}
+	t.Log(len(worker.TimeSeqList))
+	t.Log("End")
 }
 
 // TestNewId 获取id

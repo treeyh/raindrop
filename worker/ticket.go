@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+var (
+	TimeSeqList []int64
+)
+
 type Fun func(ctx context.Context) error
 
 type Ticket struct {
@@ -37,9 +41,6 @@ func (t *Ticket) Start(ctx context.Context) {
 // calcNowTimeSeq 计算当前时间戳流水
 func calcNowTimeSeq(ctx context.Context) error {
 	seq := time.Now().UnixMilli()
-	if seq < 0 {
-		log.Error(ctx, consts.ErrMsgStartTimeStampError.Error())
-	}
 	switch timeUnit {
 	case consts.TimeUnitSecond:
 		seq = seq / 1000
@@ -51,11 +52,14 @@ func calcNowTimeSeq(ctx context.Context) error {
 		seq = seq / (1000 * 60 * 60 * 24)
 	}
 	nowTimeSeq.Store(seq)
-	log.Debug(ctx, "nowTimeSeq: "+strconv.FormatInt(seq, 10))
+	TimeSeqList = append(TimeSeqList, seq)
+	TimeSeqList = append(TimeSeqList, time.Now().UnixMilli())
+	//log.Debug(ctx, "nowTimeSeq: "+strconv.FormatInt(seq, 10))
 	return nil
 }
 
 func startCalcNowTimeSeq(ctx context.Context) {
+	TimeSeqList = make([]int64, 0)
 	if timeUnit == consts.TimeUnitMillisecond {
 		ticket := NewTicket(time.Duration(1)*time.Millisecond, calcNowTimeSeq)
 		ticket.Start(ctx)

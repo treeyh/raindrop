@@ -27,8 +27,8 @@ var (
 	workerId int64
 	// timeBackBitValue 时间回拨值
 	timeBackBitValue atomic.Int64
-	// endBitValue 最后预留位bit值
-	endBitValue int64
+	// endBitsValue 最后预留位bit值
+	endBitsValue int64
 
 	// timeStampShift 时间戳位移位数
 	timeStampShift int
@@ -119,22 +119,22 @@ func GetNowTimeSeq(ctx context.Context) int64 {
 func initParams(ctx context.Context, conf config.RainDropConfig) {
 	idMode = strings.ToLower(conf.IdMode)
 	timeBackBitValue.Store(int64(conf.TimeBackBitValue))
-	endBitValue = int64(conf.EndBitValue)
+	endBitsValue = int64(conf.EndBitsValue)
 
 	workerId = worker.Id
-	seqLength := consts.IdBitLength - conf.TimeStampLength - conf.WorkIdLength - consts.TimeBackBitLength - consts.EndPlaceBitLength
+	seqLength := consts.IdBitLength - conf.TimeStampLength - conf.WorkIdLength - consts.TimeBackBitLength - conf.EndBitsLength
 
 	// 计算同一时刻最大流水号
 	maxIdSeq = (1 << seqLength) - 1
 
-	seqShift = consts.EndPlaceBitLength
+	seqShift = conf.EndBitsLength
 	timeBackShift = seqLength + seqShift
 	workerIdShift = timeBackShift + consts.TimeBackBitLength
 	timeStampShift = workerIdShift + conf.WorkIdLength
 
-	log.Info(ctx, fmt.Sprintf("idMode:%s, timeBackBitValue:%d, endBitValue:%d, workerId:%d, seqLength:%d, "+
+	log.Info(ctx, fmt.Sprintf("idMode:%s, timeBackBitValue:%d, endBitsValue:%d, workerId:%d, seqLength:%d, "+
 		"workerLength:%d, timeLength:%d, maxIdSeq:%d, seqShift: %d, timeBackShift: %d, workerIdShift: %d, timeStampShift:%d",
-		idMode, timeBackBitValue.Load(), endBitValue, workerId, seqLength,
+		idMode, timeBackBitValue.Load(), endBitsValue, workerId, seqLength,
 		conf.WorkIdLength, conf.TimeStampLength, maxIdSeq, seqShift, timeBackShift, workerIdShift, timeStampShift))
 }
 
@@ -208,7 +208,7 @@ func NewId(ctx context.Context) (int64, error) {
 
 			// 毫秒，秒还能抢救一下
 			if timeUnit == consts.TimeUnitMillisecond {
-				log.Debug(ctx, fmt.Sprintf("millisecond unit sleep %d", timestamp))
+				log.Debug(ctx, fmt.Sprintf("millisecond unit sleep %d, seq: %d, maxIdSeq: %d", timestamp, seq, maxIdSeq))
 				for {
 					timestamp = nowTimeSeq.Load()
 					if timestamp > lastTimeSeq {
@@ -216,7 +216,7 @@ func NewId(ctx context.Context) (int64, error) {
 					}
 				}
 			} else {
-				log.Debug(ctx, fmt.Sprintf("second unit sleep %d", timestamp))
+				log.Debug(ctx, fmt.Sprintf("second unit sleep %d, seq: %d, maxIdSeq: %d", timestamp, seq, maxIdSeq))
 				for {
 					time.Sleep(time.Duration(10) * time.Millisecond)
 					timestamp = nowTimeSeq.Load()
@@ -246,7 +246,7 @@ func NewId(ctx context.Context) (int64, error) {
 		(workerId << workerIdShift) |
 		(timeBackValue << timeBackShift) |
 		(seq << seqShift) |
-		endBitValue, nil
+		endBitsValue, nil
 }
 
 func NewIdByCode(ctx context.Context, code string) (int64, error) {
