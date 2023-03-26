@@ -25,10 +25,14 @@ var (
 	// idMode id模式
 	idMode   string
 	workerId int64
-	// timeBackBitValue 时间回拨值
-	timeBackBitValue atomic.Int64
+	// timeBackInitValue 时间回拨初始值
+	timeBackInitValue int64
+
 	// endBitsValue 最后预留位bit值
 	endBitsValue int64
+
+	// timeBackBitValue 时间回拨值
+	timeBackBitValue atomic.Int64
 
 	// timeStampShift 时间戳位移位数
 	timeStampShift int
@@ -60,6 +64,8 @@ var (
 	newIdByCodeLockMap = make(map[string]sync.Mutex)
 	// 上次的获取基于code新id时间序列
 	newIdByCodeTimeSeqMap = make(map[string]atomic.Int64)
+	// 基于code 时间回拨值
+	newIdByCodeTimeBackValueMap = make(map[string]atomic.Int64)
 	// 获取基于code新id同一时间的自增序列
 	newIdByCodeSeqMap = make(map[string]atomic.Int64)
 )
@@ -118,6 +124,7 @@ func GetNowTimeSeq(ctx context.Context) int64 {
 // initParams 初始化参数
 func initParams(ctx context.Context, conf config.RainDropConfig) {
 	idMode = strings.ToLower(conf.IdMode)
+	timeBackInitValue = int64(conf.TimeBackBitValue)
 	timeBackBitValue.Store(int64(conf.TimeBackBitValue))
 	endBitsValue = int64(conf.EndBitsValue)
 
@@ -240,7 +247,9 @@ func NewId(ctx context.Context) (int64, error) {
 		timeBackValue = timeBackValue ^ 1
 		timeBackBitValue.Store(timeBackValue)
 	}
-	newIdLastTimeSeq.Store(timestamp)
+	if lastTimeSeq != timestamp {
+		newIdLastTimeSeq.Store(timestamp)
+	}
 
 	return ((timestamp - startTime) << timeStampShift) |
 		(workerId << workerIdShift) |
@@ -250,5 +259,111 @@ func NewId(ctx context.Context) (int64, error) {
 }
 
 func NewIdByCode(ctx context.Context, code string) (int64, error) {
+
+	if lock, ok := newIdByCodeLockMap[code]; ok {
+		lock.Lock()
+		lock.Unlock()
+	} else {
+		generateCodeLock(ctx, code)
+		if lock, ok = newIdByCodeLockMap[code]; ok {
+			lock.Lock()
+			lock.Unlock()
+		} else {
+			return 0, consts.ErrMsgGetCodeLockFail
+		}
+	}
+
+	//newIdByCodeTimeSeqMap[code] = lastTime
+	//newIdByCodeSeqMap[code] = seq
+	timeBackValue := timeBackBitValue.Load()
+	timestamp := nowTimeSeq.Load()
+
+	codeIdSeq, _ := newIdByCodeSeqMap[code]
+
+	lastTime, _ := newIdByCodeTimeSeqMap[code]
+	lastTimeSeq := lastTime.Load()
+
+	var seq int64
+	if lastTimeSeq == timestamp {
+		// 时间戳未发生变化，需要增加newIdSeq
+		seq = codeIdSeq.Add(1)
+		if seq > maxIdSeq {
+			// 超过了序列最大值
+			if timeUnit != consts.TimeUnitMillisecond && timeUnit != consts.TimeUnitSecond {
+				// 不是毫秒或秒时间单位，不等待直接返回错误
+				log.Error(ctx, fmt.Sprintf("code:%s, timeUnit: %d, timeSeq: %d, seq: %d, maxIdSeq: %d",
+					code, int(timeUnit), timestamp, seq, maxIdSeq))
+				return 0, consts.ErrMsgIdSeqReachesMaxValueError
+			}
+
+			// 毫秒，秒还能抢救一下
+			if timeUnit == consts.TimeUnitMillisecond {
+				log.Debug(ctx, fmt.Sprintf("code:%s, millisecond unit sleep %d, seq: %d, maxIdSeq: %d", code, timestamp, seq, maxIdSeq))
+				for {
+					timestamp = nowTimeSeq.Load()
+					if timestamp > lastTimeSeq {
+						break
+					}
+				}
+			} else {
+				log.Debug(ctx, fmt.Sprintf("code:%s, second unit sleep %d, seq: %d, maxIdSeq: %d", code, timestamp, seq, maxIdSeq))
+				for {
+					time.Sleep(time.Duration(10) * time.Millisecond)
+					timestamp = nowTimeSeq.Load()
+					if timestamp > lastTimeSeq {
+						break
+					}
+				}
+			}
+			seq = 0
+			codeIdSeq.Store(0)
+		}
+	} else {
+		seq = 0
+		codeIdSeq.Store(0)
+	}
+	newIdByCodeSeqMap[code] = codeIdSeq
+
+	if lastTimeSeq > timestamp {
+		log.Error(ctx, fmt.Sprintf("timeUnit:%d, lastTimeSeq: %d, timestamp: %d ", int(timeUnit), lastTimeSeq, timestamp),
+			consts.ErrMsgServerClockBackwardsError)
+		// timeBackValue 取反，避免重复
+		timeBackValue = timeBackValue ^ 1
+		timeBackBitValue.Store(timeBackValue)
+		newIdByCodeTimeBackValueMap[code] = timeBackBitValue
+	}
+	if lastTimeSeq != timestamp {
+		lastTime.Store(timestamp)
+		newIdByCodeTimeSeqMap[code] = lastTime
+	}
+
+	return ((timestamp - startTime) << timeStampShift) |
+		(workerId << workerIdShift) |
+		(timeBackValue << timeBackShift) |
+		(seq << seqShift) |
+		endBitsValue, nil
+
 	return 0, nil
+}
+
+func generateCodeLock(ctx context.Context, code string) {
+	newCodeLockLock.Lock()
+	defer newCodeLockLock.Unlock()
+
+	if _, ok := newIdByCodeTimeSeqMap[code]; ok {
+		return
+	}
+
+	var lastTime atomic.Int64
+	var seq atomic.Int64
+	var timeBackValue atomic.Int64
+	var codeLock sync.Mutex
+	lastTime.Store(0)
+	seq.Store(0)
+	timeBackValue.Store(timeBackInitValue)
+
+	newIdByCodeTimeBackValueMap[code] = timeBackBitValue
+	newIdByCodeLockMap[code] = codeLock
+	newIdByCodeTimeSeqMap[code] = lastTime
+	newIdByCodeSeqMap[code] = seq
 }

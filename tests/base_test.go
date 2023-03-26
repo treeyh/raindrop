@@ -90,7 +90,7 @@ func getTestSimpleMillisecondConfig() config.RainDropConfig {
 		ServiceMinWorkId:        minWorkerId,
 		ServiceMaxWorkId:        maxWorkerId,
 		TimeBackBitValue:        0,
-		EndBitsLength:           0,
+		EndBitsLength:           1,
 		EndBitsValue:            0,
 	}
 }

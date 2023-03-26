@@ -2,9 +2,9 @@ package tests
 
 import (
 	"context"
-	"fmt"
 	"github.com/treeyh/raindrop"
 	"github.com/treeyh/raindrop/worker"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -16,16 +16,24 @@ func TestA(t *testing.T) {
 	//})
 	//ticket.Start(getTestContext())
 
-	for i := 0; i < 10; i++ {
-		a := time.Now()
-		b := <-time.After(1 * time.Nanosecond)
-		fmt.Println(b.Sub(a))
-	}
+	code := "test"
+	m := make(map[string]atomic.Int64)
 
-	//for {
-	//	time.Sleep(time.Duration(1) * time.Nanosecond)
-	//	t.Log(time.Now().UnixMilli())
-	//}
+	var i atomic.Int64
+	i.Store(100)
+	t.Log(i)
+	m[code] = i
+
+	b, _ := m[code]
+	b.Store(110)
+	t.Log(b)
+
+	t.Log(i)
+
+	m[code] = b
+
+	c, _ := m[code]
+	t.Log(c)
 }
 
 // TestSimpleNewId 获取id
@@ -53,6 +61,7 @@ func TestSimpleNewId(t *testing.T) {
 	//	last = value
 	//}
 	//t.Log(len(worker.TimeSeqList))
+
 	t.Log("End")
 }
 

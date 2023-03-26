@@ -29,4 +29,7 @@ var (
 
 	// ErrMsgIdSeqReachesMaxValueError 当前时刻id生成序列达到最大值
 	ErrMsgIdSeqReachesMaxValueError = errors.New("The current moment id generation sequence reaches its maximum value")
+
+	// ErrMsgGetCodeLockFail 获取编号锁失败
+	ErrMsgGetCodeLockFail = errors.New("Failed to get code lock")
 )
