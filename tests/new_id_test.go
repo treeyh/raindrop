@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"fmt"
 	"github.com/treeyh/raindrop"
 	"github.com/treeyh/raindrop/worker"
 	"testing"
@@ -9,12 +10,22 @@ import (
 )
 
 func TestA(t *testing.T) {
-	ticket := worker.NewTicket(time.Duration(1)*time.Millisecond, func(ctx context.Context) error {
-		t.Log(time.Now().UnixMilli())
-		return nil
-	})
-	ticket.Start(getTestContext())
+	//ticket := worker.NewTicket(time.Duration(1)*time.Millisecond, func(ctx context.Context) error {
+	//	t.Log(time.Now().UnixMilli())
+	//	return nil
+	//})
+	//ticket.Start(getTestContext())
 
+	for i := 0; i < 10; i++ {
+		a := time.Now()
+		b := <-time.After(1 * time.Nanosecond)
+		fmt.Println(b.Sub(a))
+	}
+
+	//for {
+	//	time.Sleep(time.Duration(1) * time.Nanosecond)
+	//	t.Log(time.Now().UnixMilli())
+	//}
 }
 
 // TestSimpleNewId 获取id
@@ -31,17 +42,17 @@ func TestSimpleNewId(t *testing.T) {
 
 	t.Logf("%s pass.", t.Name())
 
-	//batchNewId(ctx, t, 0, true)
+	batchNewId(ctx, t, 0, true)
 
 	time.Sleep(time.Duration(10) * time.Second)
 
-	last := int64(0)
-	for i, value := range worker.TimeSeqList {
-		intval := value - last
-		t.Logf("%d=%d, %d", value, intval, i%2)
-		last = value
-	}
-	t.Log(len(worker.TimeSeqList))
+	//last := int64(0)
+	//for i, value := range worker.TimeSeqList {
+	//	intval := value - last
+	//	t.Logf("%d=%d, %d", value, intval, i%2)
+	//	last = value
+	//}
+	//t.Log(len(worker.TimeSeqList))
 	t.Log("End")
 }
 

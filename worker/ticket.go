@@ -52,8 +52,8 @@ func calcNowTimeSeq(ctx context.Context) error {
 		seq = seq / (1000 * 60 * 60 * 24)
 	}
 	nowTimeSeq.Store(seq)
-	TimeSeqList = append(TimeSeqList, seq)
-	TimeSeqList = append(TimeSeqList, time.Now().UnixMilli())
+	//TimeSeqList = append(TimeSeqList, seq)
+	//TimeSeqList = append(TimeSeqList, time.Now().UnixMilli())
 	//log.Debug(ctx, "nowTimeSeq: "+strconv.FormatInt(seq, 10))
 	return nil
 }
