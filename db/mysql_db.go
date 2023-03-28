@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	mysqlTableName = "soc_id_generator_worker"
+	mysqlTableName = "soc_raindrop_worker"
 
 	mysqlPreSelectSql = "SELECT `id`, `code`, `time_unit`, `heartbeat_time`, `create_time`, `update_time`, `version`, `del_flag` FROM " + mysqlTableName + " WHERE `del_flag` = 2 "
 )
@@ -66,8 +66,8 @@ func (m *MySqlDb) CreateTable(ctx context.Context) error {
 		"\t`version` bigint NOT NULL DEFAULT '1',\n" +
 		"\t`del_flag` tinyint NOT NULL DEFAULT '2',\n" +
 		"\tPRIMARY KEY (`id`),\n" +
-		"\tKEY `idx_soc_id_generator_worker_heartbeat_time` (`heartbeat_time`),\n" +
-		"\tKEY `idx_soc_id_generator_worker_code` (`code`)\n" +
+		"\tKEY `idx_soc_raindrop_worker_heartbeat_time` (`heartbeat_time`),\n" +
+		"\tKEY `idx_soc_raindrop_worker_code` (`code`)\n" +
 		"\t) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;"
 
 	_, err := _dbConn.ExecContext(ctx, sql)
@@ -100,8 +100,8 @@ func (m *MySqlDb) InitWorkers(ctx context.Context, beginId int64, endId int64) e
 }
 
 // GetBeforeWorker 找到该节点之前的worker
-func (m *MySqlDb) GetBeforeWorker(ctx context.Context, code string, timeUnit int) (*model.IdGeneratorWorker, error) {
-	var worker model.IdGeneratorWorker
+func (m *MySqlDb) GetBeforeWorker(ctx context.Context, code string, timeUnit int) (*model.RaindropWorker, error) {
+	var worker model.RaindropWorker
 	s := mysqlPreSelectSql + "AND `code` = ? AND `time_unit` = ? ORDER BY `id` asc LIMIT 0,1 "
 	err := _dbConn.QueryRowContext(ctx, s, code, timeUnit).Scan(&worker.Id, &worker.Code,
 		&worker.TimeUnit, &worker.HeartbeatTime, &worker.CreateTime, &worker.UpdateTime, &worker.Version, &worker.DelFlag)
@@ -117,8 +117,8 @@ func (m *MySqlDb) GetBeforeWorker(ctx context.Context, code string, timeUnit int
 }
 
 // QueryFreeWorkers 获取空闲的worker列表
-func (m *MySqlDb) QueryFreeWorkers(ctx context.Context, heartbeatTime time.Time) ([]model.IdGeneratorWorker, error) {
-	workers := make([]model.IdGeneratorWorker, 0)
+func (m *MySqlDb) QueryFreeWorkers(ctx context.Context, heartbeatTime time.Time) ([]model.RaindropWorker, error) {
+	workers := make([]model.RaindropWorker, 0)
 	s := mysqlPreSelectSql + "AND `heartbeat_time` < ? "
 	rows, err := _dbConn.QueryContext(ctx, s, heartbeatTime)
 	if err != nil {
@@ -126,7 +126,7 @@ func (m *MySqlDb) QueryFreeWorkers(ctx context.Context, heartbeatTime time.Time)
 		return nil, err
 	}
 	for rows.Next() {
-		var worker model.IdGeneratorWorker
+		var worker model.RaindropWorker
 		e := rows.Scan(&worker.Id, &worker.Code, &worker.TimeUnit, &worker.HeartbeatTime, &worker.CreateTime, &worker.UpdateTime, &worker.Version, &worker.DelFlag)
 		if e != nil {
 			log.Error(ctx, "query workers fail", e)
@@ -140,7 +140,7 @@ func (m *MySqlDb) QueryFreeWorkers(ctx context.Context, heartbeatTime time.Time)
 }
 
 // ActivateWorker 激活启用worker
-func (m *MySqlDb) ActivateWorker(ctx context.Context, id int64, code string, timeUnit int, version int64) (*model.IdGeneratorWorker, error) {
+func (m *MySqlDb) ActivateWorker(ctx context.Context, id int64, code string, timeUnit int, version int64) (*model.RaindropWorker, error) {
 	sql := "UPDATE `" + mysqlTableName + "` SET `code` = ?, `time_unit` = ?, `version` = `version` + 1, `heartbeat_time` = ? WHERE `id` = ? AND `version` = ? "
 
 	result, err := _dbConn.ExecContext(ctx, sql, code, timeUnit, time.Now(), id, version)
@@ -161,7 +161,7 @@ func (m *MySqlDb) ActivateWorker(ctx context.Context, id int64, code string, tim
 	worker, err := m.GetWorkerById(ctx, id)
 	if err != nil {
 		log.Error(ctx, err.Error(), err)
-		return &model.IdGeneratorWorker{
+		return &model.RaindropWorker{
 			Id:            id,
 			Code:          code,
 			TimeUnit:      consts.TimeUnit(timeUnit),
@@ -177,7 +177,7 @@ func (m *MySqlDb) ActivateWorker(ctx context.Context, id int64, code string, tim
 }
 
 // HeartbeatWorker 心跳
-func (m *MySqlDb) HeartbeatWorker(ctx context.Context, worker *model.IdGeneratorWorker) (*model.IdGeneratorWorker, error) {
+func (m *MySqlDb) HeartbeatWorker(ctx context.Context, worker *model.RaindropWorker) (*model.RaindropWorker, error) {
 	sql := "UPDATE `" + mysqlTableName + "` SET `version` = `version` + 1, `heartbeat_time` = ? WHERE `id` = ? AND `version` = ? "
 
 	result, err := _dbConn.ExecContext(ctx, sql, time.Now(), worker.Id, worker.Version)
@@ -202,9 +202,9 @@ func (m *MySqlDb) HeartbeatWorker(ctx context.Context, worker *model.IdGenerator
 }
 
 // GetWorkerById 根据id获取worker
-func (m *MySqlDb) GetWorkerById(ctx context.Context, id int64) (*model.IdGeneratorWorker, error) {
+func (m *MySqlDb) GetWorkerById(ctx context.Context, id int64) (*model.RaindropWorker, error) {
 	s := mysqlPreSelectSql + " AND `id` = ? "
-	var worker model.IdGeneratorWorker
+	var worker model.RaindropWorker
 
 	err := _dbConn.QueryRowContext(ctx, s, id).Scan(&worker.Id, &worker.Code, &worker.TimeUnit, &worker.HeartbeatTime,
 		&worker.CreateTime, &worker.UpdateTime, &worker.Version, &worker.DelFlag)

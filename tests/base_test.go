@@ -154,14 +154,14 @@ func initTestMySqlDb(ctx context.Context) error {
 
 // dropTestWorkerTable 删除表
 func dropTestWorkerTable(ctx context.Context) error {
-	s := "DROP TABLE soc_id_generator_worker;"
+	s := "DROP TABLE soc_raindrop_worker;"
 	_, err := _dbConn.ExecContext(ctx, s)
 	return err
 }
 
 // updateWorker 更新 Worker
 func updateWorker(ctx context.Context, id int64, code string, timeUnit int, heartbeatTime time.Time) error {
-	s := "UPDATE soc_id_generator_worker SET code = ?, time_unit = ?, heartbeat_time = ? WHERE id = ? "
+	s := "UPDATE soc_raindrop_worker SET code = ?, time_unit = ?, heartbeat_time = ? WHERE id = ? "
 	_, err := _dbConn.ExecContext(ctx, s)
 	return err
 }

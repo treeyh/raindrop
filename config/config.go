@@ -34,7 +34,7 @@ type RainDropConfig struct {
 	// TimeUnit 时间戳单位, 1：毫秒（可能会有闰秒问题）；2：秒，默认；3：分钟；4：小时，间隔过大不建议选择；5：天，间隔过大不建议选择；
 	TimeUnit consts.TimeUnit `json:"timeUnit"`
 
-	// StartTimeStamp 起始时间，时间戳从该时间开始计时，格式：2020-01-01T00:00:00.000+0000
+	// StartTimeStamp 起始时间，时间戳从该时间开始计时
 	StartTimeStamp time.Time `json:"startTimeStamp"`
 
 	// TimeStampLength 时间戳位数
@@ -95,7 +95,7 @@ type RainDropConfig struct {
 	    - 23：约 22982.4 年；
 	    - 24：约 45964.9 年；
 	*/
-	TimeStampLength int `json:"timeLength"`
+	TimeStampLength int `json:"timeStampLength"`
 
 	// PriorityEqualCodeWorkId 优先相同code的workerId(毫秒，秒单位场景下生效)，默认：false。code格式为：{内网ip}:{ServicePort}#{Mac地址}
 	PriorityEqualCodeWorkId bool `json:"priorityEqualCodeWorkId"`

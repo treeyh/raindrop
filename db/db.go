@@ -33,19 +33,19 @@ type IDb interface {
 	InitWorkers(ctx context.Context, beginId int64, endId int64) error
 
 	// GetBeforeWorker 找到该节点之前的worker
-	GetBeforeWorker(ctx context.Context, code string, timeUnit int) (*model.IdGeneratorWorker, error)
+	GetBeforeWorker(ctx context.Context, code string, timeUnit int) (*model.RaindropWorker, error)
 
 	// QueryFreeWorkers 查询空闲的workers
-	QueryFreeWorkers(ctx context.Context, heartbeatTime time.Time) ([]model.IdGeneratorWorker, error)
+	QueryFreeWorkers(ctx context.Context, heartbeatTime time.Time) ([]model.RaindropWorker, error)
 
 	// ActivateWorker 激活启用worker
-	ActivateWorker(ctx context.Context, id int64, code string, timeUnit int, version int64) (*model.IdGeneratorWorker, error)
+	ActivateWorker(ctx context.Context, id int64, code string, timeUnit int, version int64) (*model.RaindropWorker, error)
 
 	// HeartbeatWorker 心跳
-	HeartbeatWorker(ctx context.Context, worker *model.IdGeneratorWorker) (*model.IdGeneratorWorker, error)
+	HeartbeatWorker(ctx context.Context, worker *model.RaindropWorker) (*model.RaindropWorker, error)
 
 	// GetWorkerById 根据id获取worker
-	GetWorkerById(ctx context.Context, id int64) (*model.IdGeneratorWorker, error)
+	GetWorkerById(ctx context.Context, id int64) (*model.RaindropWorker, error)
 }
 
 // InitMySqlDb 初始化MySql

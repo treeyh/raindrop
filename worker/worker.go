@@ -21,7 +21,7 @@ var (
 	timeUnit   consts.TimeUnit
 	logLevel   logger.LogLevel
 	log        logger.ILogger
-	worker     *model.IdGeneratorWorker
+	worker     *model.RaindropWorker
 
 	// idMode id模式
 	idMode   string
@@ -160,7 +160,7 @@ func initParams(ctx context.Context, conf config.RainDropConfig) {
 }
 
 // activateWorker 激活worker
-func activateWorker(ctx context.Context, conf config.RainDropConfig) (*model.IdGeneratorWorker, error) {
+func activateWorker(ctx context.Context, conf config.RainDropConfig) (*model.RaindropWorker, error) {
 
 	ip, err := utils.GetLocalIP()
 	if err != nil {

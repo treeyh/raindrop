@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type IdGeneratorWorker struct {
+type RaindropWorker struct {
 	Id int64 `json:"id"`
 
 	Code string `json:"code"`
