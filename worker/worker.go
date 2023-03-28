@@ -19,6 +19,7 @@ import (
 var (
 	workerCode string
 	timeUnit   consts.TimeUnit
+	logLevel   logger.LogLevel
 	log        logger.ILogger
 	worker     *model.IdGeneratorWorker
 
@@ -73,24 +74,18 @@ var (
 // Init 初始化worker
 func Init(ctx context.Context, conf config.RainDropConfig) error {
 	log = conf.Logger
-	ip, err := utils.GetLocalIP()
-	if err != nil {
-		log.Error(ctx, "get local ip fail", err)
-		return err
-	}
-	workerCode = ip + ":" + strconv.Itoa(conf.ServicePort) + "#" + utils.GetFirstMacAddr()
-	timeUnit = conf.TimeUnit
+	logLevel = log.GetLogLevel()
 
-	worker, err = activateWorker(ctx, conf)
-	if worker == nil {
+	w, err := activateWorker(ctx, conf)
+	if w == nil {
 		if err != nil {
 			return err
 		}
 		log.Error(ctx, consts.ErrMsgWorkersNotAvailable.Error())
 		return consts.ErrMsgWorkersNotAvailable
 	}
+	worker = w
 
-	startTime = conf.StartTimeStamp.UnixMilli()
 	err = calcNowTimeSeq(ctx)
 	if err != nil {
 		return err
@@ -121,12 +116,31 @@ func GetNowTimeSeq(ctx context.Context) int64 {
 	return nowTimeSeq.Load()
 }
 
+// calcTimestamp 计算时间戳
+func calcTimestamp(ctx context.Context, timestampMilli int64, timeUnit consts.TimeUnit) int64 {
+	st := timestampMilli
+
+	switch timeUnit {
+	case consts.TimeUnitSecond:
+		st = st / 1000
+	case consts.TimeUnitMinute:
+		st = st / (1000 * 60)
+	case consts.TimeUnitHour:
+		st = st / (1000 * 60 * 60)
+	case consts.TimeUnitDay:
+		st = st / (1000 * 60 * 60 * 24)
+	}
+	return st
+}
+
 // initParams 初始化参数
 func initParams(ctx context.Context, conf config.RainDropConfig) {
 	idMode = strings.ToLower(conf.IdMode)
 	timeBackInitValue = int64(conf.TimeBackBitValue)
 	timeBackBitValue.Store(int64(conf.TimeBackBitValue))
 	endBitsValue = int64(conf.EndBitsValue)
+
+	startTime = calcTimestamp(ctx, conf.StartTimeStamp.UnixMilli(), conf.TimeUnit)
 
 	workerId = worker.Id
 	seqLength := consts.IdBitLength - conf.TimeStampLength - conf.WorkIdLength - consts.TimeBackBitLength - conf.EndBitsLength
@@ -148,14 +162,22 @@ func initParams(ctx context.Context, conf config.RainDropConfig) {
 // activateWorker 激活worker
 func activateWorker(ctx context.Context, conf config.RainDropConfig) (*model.IdGeneratorWorker, error) {
 
-	if conf.PriorityEqualCodeWorkId && (timeUnit == consts.TimeUnitMillisecond || timeUnit == consts.TimeUnitSecond) {
-		w, err := db.Db.GetBeforeWorker(ctx, workerCode, int(timeUnit))
+	ip, err := utils.GetLocalIP()
+	if err != nil {
+		log.Error(ctx, "get local ip fail", err)
+		return nil, err
+	}
+	workerCode = ip + ":" + strconv.Itoa(conf.ServicePort) + "#" + utils.GetFirstMacAddr()
+	timeUnit = conf.TimeUnit
 
-		if err != nil {
+	if conf.PriorityEqualCodeWorkId && (timeUnit == consts.TimeUnitMillisecond || timeUnit == consts.TimeUnitSecond) {
+		w, e := db.Db.GetBeforeWorker(ctx, workerCode, int(timeUnit))
+
+		if e != nil {
 			return nil, err
 		}
 		if w != nil {
-			w, err = db.Db.ActivateWorker(ctx, w.Id, workerCode, int(timeUnit), w.Version)
+			w, e = db.Db.ActivateWorker(ctx, w.Id, workerCode, int(timeUnit), w.Version)
 			if w != nil {
 				return w, nil
 			}
@@ -215,7 +237,9 @@ func NewId(ctx context.Context) (int64, error) {
 
 			// 毫秒，秒还能抢救一下
 			if timeUnit == consts.TimeUnitMillisecond {
-				log.Debug(ctx, fmt.Sprintf("millisecond unit sleep %d, seq: %d, maxIdSeq: %d", timestamp, seq, maxIdSeq))
+				if logLevel <= logger.Debug {
+					log.Debug(ctx, fmt.Sprintf("millisecond unit sleep %d, seq: %d, maxIdSeq: %d", timestamp, seq, maxIdSeq))
+				}
 				for {
 					timestamp = nowTimeSeq.Load()
 					if timestamp > lastTimeSeq {
@@ -223,7 +247,9 @@ func NewId(ctx context.Context) (int64, error) {
 					}
 				}
 			} else {
-				log.Debug(ctx, fmt.Sprintf("second unit sleep %d, seq: %d, maxIdSeq: %d", timestamp, seq, maxIdSeq))
+				if logLevel <= logger.Debug {
+					log.Debug(ctx, fmt.Sprintf("second unit sleep %d, seq: %d, maxIdSeq: %d", timestamp, seq, maxIdSeq))
+				}
 				for {
 					time.Sleep(time.Duration(10) * time.Millisecond)
 					timestamp = nowTimeSeq.Load()
@@ -250,6 +276,12 @@ func NewId(ctx context.Context) (int64, error) {
 	if lastTimeSeq != timestamp {
 		newIdLastTimeSeq.Store(timestamp)
 	}
+
+	//log.Debug(ctx, fmt.Sprintf("timestamp:%d, startTime:%d, timeStampShift:%d\n", timestamp, startTime, timeStampShift))
+	//log.Debug(ctx, fmt.Sprintf("workerId:%d, workerIdShift:%d\n", workerId, workerIdShift))
+	//log.Debug(ctx, fmt.Sprintf("timeBackValue:%d, timeBackShift:%d\n", timeBackValue, timeBackShift))
+	//log.Debug(ctx, fmt.Sprintf("seq:%d, seqShift:%d\n", seq, seqShift))
+	//log.Debug(ctx, fmt.Sprintf("endBitsValue：%d\n", endBitsValue))
 
 	return ((timestamp - startTime) << timeStampShift) |
 		(workerId << workerIdShift) |
@@ -298,7 +330,9 @@ func NewIdByCode(ctx context.Context, code string) (int64, error) {
 
 			// 毫秒，秒还能抢救一下
 			if timeUnit == consts.TimeUnitMillisecond {
-				log.Debug(ctx, fmt.Sprintf("code:%s, millisecond unit sleep %d, seq: %d, maxIdSeq: %d", code, timestamp, seq, maxIdSeq))
+				if logLevel <= logger.Debug {
+					log.Debug(ctx, fmt.Sprintf("code:%s, millisecond unit sleep %d, seq: %d, maxIdSeq: %d", code, timestamp, seq, maxIdSeq))
+				}
 				for {
 					timestamp = nowTimeSeq.Load()
 					if timestamp > lastTimeSeq {
@@ -306,7 +340,9 @@ func NewIdByCode(ctx context.Context, code string) (int64, error) {
 					}
 				}
 			} else {
-				log.Debug(ctx, fmt.Sprintf("code:%s, second unit sleep %d, seq: %d, maxIdSeq: %d", code, timestamp, seq, maxIdSeq))
+				if logLevel <= logger.Debug {
+					log.Debug(ctx, fmt.Sprintf("code:%s, second unit sleep %d, seq: %d, maxIdSeq: %d", code, timestamp, seq, maxIdSeq))
+				}
 				for {
 					time.Sleep(time.Duration(10) * time.Millisecond)
 					timestamp = nowTimeSeq.Load()

@@ -4,42 +4,23 @@ import (
 	"context"
 	"github.com/treeyh/raindrop"
 	"github.com/treeyh/raindrop/worker"
-	"sync/atomic"
 	"testing"
 	"time"
 )
 
-func TestA(t *testing.T) {
-	//ticket := worker.NewTicket(time.Duration(1)*time.Millisecond, func(ctx context.Context) error {
-	//	t.Log(time.Now().UnixMilli())
-	//	return nil
-	//})
-	//ticket.Start(getTestContext())
-
-	code := "test"
-	m := make(map[string]atomic.Int64)
-
-	var i atomic.Int64
-	i.Store(100)
-	t.Log(i)
-	m[code] = i
-
-	b, _ := m[code]
-	b.Store(110)
-	t.Log(b)
-
-	t.Log(i)
-
-	m[code] = b
-
-	c, _ := m[code]
-	t.Log(c)
+func TestTicketInterval(t *testing.T) {
+	ticket := worker.NewTicket(time.Duration(1)*time.Millisecond, func(ctx context.Context) error {
+		t.Log(time.Now().UnixMilli())
+		return nil
+	})
+	ticket.Start(getTestContext())
 }
 
 // TestSimpleNewId 获取id
 func TestSimpleNewId(t *testing.T) {
 	ctx := getTestContext()
-	conf := getTestSimpleMillisecondConfig()
+	//conf := getTestSimpleMillisecondConfig()
+	conf := getTestSecondConfig()
 
 	dropTestWorkerTable(ctx)
 
@@ -54,21 +35,14 @@ func TestSimpleNewId(t *testing.T) {
 
 	time.Sleep(time.Duration(10) * time.Second)
 
-	//last := int64(0)
-	//for i, value := range worker.TimeSeqList {
-	//	intval := value - last
-	//	t.Logf("%d=%d, %d", value, intval, i%2)
-	//	last = value
-	//}
-	//t.Log(len(worker.TimeSeqList))
-
 	t.Log("End")
 }
 
-// TestNewId 获取id
-func TestNewId(t *testing.T) {
+// TestBenchmarkNewId 压力测试
+func TestBenchmarkNewId(t *testing.T) {
 	ctx := getTestContext()
-	conf := getTestMillisecondConfig()
+	//conf := getTestSimpleMillisecondConfig()
+	conf := getTestSecondConfig()
 
 	dropTestWorkerTable(ctx)
 

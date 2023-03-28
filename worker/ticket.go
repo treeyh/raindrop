@@ -4,13 +4,10 @@ import (
 	"context"
 	"github.com/treeyh/raindrop/consts"
 	"github.com/treeyh/raindrop/db"
+	"github.com/treeyh/raindrop/logger"
 	"github.com/treeyh/raindrop/utils"
 	"strconv"
 	"time"
-)
-
-var (
-	TimeSeqList []int64
 )
 
 type Fun func(ctx context.Context) error
@@ -40,26 +37,12 @@ func (t *Ticket) Start(ctx context.Context) {
 
 // calcNowTimeSeq 计算当前时间戳流水
 func calcNowTimeSeq(ctx context.Context) error {
-	seq := time.Now().UnixMilli()
-	switch timeUnit {
-	case consts.TimeUnitSecond:
-		seq = seq / 1000
-	case consts.TimeUnitMinute:
-		seq = seq / (1000 * 60)
-	case consts.TimeUnitHour:
-		seq = seq / (1000 * 60 * 60)
-	case consts.TimeUnitDay:
-		seq = seq / (1000 * 60 * 60 * 24)
-	}
+	seq := calcTimestamp(ctx, time.Now().UnixMilli(), timeUnit)
 	nowTimeSeq.Store(seq)
-	//TimeSeqList = append(TimeSeqList, seq)
-	//TimeSeqList = append(TimeSeqList, time.Now().UnixMilli())
-	//log.Debug(ctx, "nowTimeSeq: "+strconv.FormatInt(seq, 10))
 	return nil
 }
 
 func startCalcNowTimeSeq(ctx context.Context) {
-	TimeSeqList = make([]int64, 0)
 	if timeUnit == consts.TimeUnitMillisecond {
 		ticket := NewTicket(time.Duration(1)*time.Millisecond, calcNowTimeSeq)
 		ticket.Start(ctx)
@@ -83,7 +66,9 @@ func heartbeat(ctx context.Context) error {
 		log.Error(ctx, err.Error(), err)
 	}
 	if w != nil {
-		log.Debug(ctx, "worker heartbeat worker: "+utils.ToJsonIgnoreError(w))
+		if logLevel <= logger.Debug {
+			log.Debug(ctx, "worker heartbeat worker: "+utils.ToJsonIgnoreError(w))
+		}
 		if w.UpdateTime.Unix() > w.HeartbeatTime.Unix()+consts.HeartbeatTimeInterval ||
 			w.UpdateTime.Unix() < w.HeartbeatTime.Unix()-consts.HeartbeatTimeInterval {
 			log.Error(ctx, consts.ErrMsgDatabaseServerTimeInterval.Error()+". worker:"+utils.ToJsonIgnoreError(w))

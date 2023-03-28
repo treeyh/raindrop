@@ -42,8 +42,8 @@ func getTestContext() context.Context {
 func getTestMySqlConfig() config.RainDropDbConfig {
 	return config.RainDropDbConfig{
 		DbType: "mysql",
-		//DbUrl:  "root:mysqlpw@(192.168.80.137:3306)/raindrop_db?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai",
-		DbUrl: "root:7Dv_v2VxnZ8PgG26f@(192.168.0.134:3306)/raindrop_db?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai",
+		DbUrl:  "root:mysqlpw@(192.168.80.137:3306)/raindrop_db?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai",
+		//DbUrl: "root:7Dv_v2VxnZ8PgG26f@(192.168.0.134:3306)/raindrop_db?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai",
 	}
 }
 
@@ -64,9 +64,28 @@ func getTestSecondConfig() config.RainDropConfig {
 		Logger:                  getTestStdoutLogger(),
 		ServicePort:             port,
 		TimeUnit:                consts.TimeUnitSecond,
-		StartTimeStamp:          time.Date(2023, 1, 1, 0, 0, 0, 0, time.Local),
-		TimeStampLength:         35,
+		StartTimeStamp:          time.Date(2023, 3, 1, 0, 0, 0, 0, time.Local),
+		TimeStampLength:         31,
 		PriorityEqualCodeWorkId: false,
+		WorkIdLength:            workerLength,
+		ServiceMinWorkId:        minWorkerId,
+		ServiceMaxWorkId:        maxWorkerId,
+		TimeBackBitValue:        0,
+		EndBitsLength:           0,
+		EndBitsValue:            0,
+	}
+}
+
+func getTestMinuteConfig() config.RainDropConfig {
+	return config.RainDropConfig{
+		IdMode:                  consts.IdModeSnowflake,
+		DbConfig:                getTestMySqlConfig(),
+		Logger:                  getTestStdoutLogger(),
+		ServicePort:             port,
+		TimeUnit:                consts.TimeUnitMinute,
+		StartTimeStamp:          time.Date(2023, 3, 1, 0, 0, 0, 0, time.Local),
+		TimeStampLength:         26,
+		PriorityEqualCodeWorkId: true,
 		WorkIdLength:            workerLength,
 		ServiceMinWorkId:        minWorkerId,
 		ServiceMaxWorkId:        maxWorkerId,
@@ -90,7 +109,7 @@ func getTestSimpleMillisecondConfig() config.RainDropConfig {
 		ServiceMinWorkId:        minWorkerId,
 		ServiceMaxWorkId:        maxWorkerId,
 		TimeBackBitValue:        0,
-		EndBitsLength:           1,
+		EndBitsLength:           0,
 		EndBitsValue:            0,
 	}
 }

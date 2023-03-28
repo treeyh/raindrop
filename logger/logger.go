@@ -39,6 +39,7 @@ type IWriter interface {
 
 type ILogger interface {
 	LogMode(LogLevel) ILogger
+	GetLogLevel() LogLevel
 	Debug(context.Context, string, ...interface{})
 	Info(context.Context, string, ...interface{})
 	Warn(context.Context, string, ...interface{})
@@ -99,6 +100,11 @@ func (l *_logger) LogMode(level LogLevel) ILogger {
 	newlogger := *l
 	newlogger.LogLevel = level
 	return &newlogger
+}
+
+// GetLogLevel 获取日志级别
+func (l *_logger) GetLogLevel() LogLevel {
+	return l.LogLevel
 }
 
 // Debug print info
