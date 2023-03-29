@@ -2,8 +2,11 @@ package tests
 
 import (
 	"github.com/treeyh/raindrop"
+	"github.com/treeyh/raindrop/consts"
+	"github.com/treeyh/raindrop/db"
 	"github.com/treeyh/raindrop/worker"
 	"testing"
+	"time"
 )
 
 // TestGetDefaultWorkerId 正常获取workerId
@@ -19,6 +22,60 @@ func TestGetDefaultWorkerId(t *testing.T) {
 	if worker.GetWorkerId(ctx) != minWorkerId {
 		t.Fatalf("%s worker id get error.", t.Name())
 	}
+	t.Logf("%s pass.", t.Name())
+}
+
+// TestWorkerHeartbeat 检查心跳是否生效
+func TestWorkerHeartbeat(t *testing.T) {
+	ctx := getTestContext()
+	conf := getTestMillisecondConfig()
+
+	dropTestWorkerTable(ctx)
+
+	raindrop.Init(ctx, conf)
+	t.Log(worker.GetWorkerId(ctx))
+	t.Log(worker.GetNowTimeSeq(ctx))
+	if worker.GetWorkerId(ctx) != minWorkerId {
+		t.Fatalf("%s worker id get error.", t.Name())
+	}
+
+	workerId := worker.GetWorkerId(ctx)
+	seq := worker.GetNowTimeSeq(ctx)
+
+	w, err := db.Db.GetWorkerById(ctx, workerId)
+	if err != nil {
+		t.Fatalf("%s worker %d get by db error. %s", t.Name(), workerId, err.Error())
+	}
+	t.Logf("%s workerId: %d, heartTime: %s, seq: %d.", t.Name(), workerId, w.HeartbeatTime, seq)
+
+	time.Sleep(time.Duration(consts.HeartbeatTimeInterval+2) * time.Second)
+
+	w, err = db.Db.GetWorkerById(ctx, workerId)
+	seq = worker.GetNowTimeSeq(ctx)
+	if err != nil {
+		t.Fatalf("%s worker %d get by db error. %s", t.Name(), workerId, err.Error())
+	}
+	t.Logf("%s workerId: %d, heartTime: %s, seq: %d.", t.Name(), workerId, w.HeartbeatTime, seq)
+
+	time.Sleep(time.Duration(consts.HeartbeatTimeInterval+2) * time.Second)
+
+	w2, err2 := db.Db.GetWorkerById(ctx, workerId)
+	seq = worker.GetNowTimeSeq(ctx)
+	if err2 != nil {
+		t.Fatalf("%s worker %d get by db error. %s", t.Name(), workerId, err.Error())
+	}
+	t.Logf("%s workerId: %d, heartTime: %s, seq: %d.", t.Name(), workerId, w2.HeartbeatTime, seq)
+
+	if !w2.HeartbeatTime.After(w.HeartbeatTime) {
+		t.Fatalf("%s worker heartbeat error. w: %s  w2: %s;", t.Name(), w.HeartbeatTime, w2.HeartbeatTime)
+	}
+
+	raindrop.Init(ctx, conf)
+	wId := worker.GetWorkerId(ctx)
+	if wId != workerId+1 {
+		t.Fatalf("%s get next worker error. wId: %d  w2Id: %d;", t.Name(), workerId, wId)
+	}
+
 	t.Logf("%s pass.", t.Name())
 }
 
@@ -108,4 +165,32 @@ func TestMultipleGetWorkerIdSameServicePort1(t *testing.T) {
 		t.Fatalf("%s work seq1:%d; seq2:%d; seq3:%d error.", t.Name(), seq1, seq2, seq3)
 	}
 	t.Logf("%s pass.", t.Name())
+}
+
+// TestMultipleGetWorkerIdCountOverflow 超过数量获取worker
+func TestMultipleGetWorkerIdCountOverflow(t *testing.T) {
+	ctx := getTestSkipHeartbeatContext()
+	conf := getTestMillisecondConfig()
+
+	dropTestWorkerTable(ctx)
+
+	wIdMap := make(map[int64]bool)
+	for i := conf.ServiceMinWorkId; i <= conf.ServiceMaxWorkId; i++ {
+		raindrop.Init(ctx, conf)
+
+		w := worker.GetWorkerId(ctx)
+		seq := worker.GetNowTimeSeq(ctx)
+		t.Logf("get worker:%d seq:%d", w, seq)
+
+		if _, ok := wIdMap[w]; ok {
+			t.Fatalf(" wworkerId:%d exist.", w)
+			return
+		}
+		wIdMap[w] = true
+	}
+
+	// Open the following comment, there should be no worker available, fatal exit
+	//raindrop.Init(ctx, conf)
+
+	t.Logf("%s not pass.", t.Name())
 }
