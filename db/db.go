@@ -26,8 +26,8 @@ type IDb interface {
 	// ExistTable 表是否存在
 	ExistTable(ctx context.Context) (bool, error)
 
-	// CreateTable 创建表
-	CreateTable(ctx context.Context) error
+	// InitTable 创建表
+	InitTable(ctx context.Context) error
 
 	// InitWorkers 初始化workers
 	InitWorkers(ctx context.Context, beginId int64, endId int64) error
@@ -78,7 +78,7 @@ func InitTableWorkers(ctx context.Context, beginId int64, endId int64) error {
 		return err
 	}
 	if !exist {
-		err = Db.CreateTable(ctx)
+		err = Db.InitTable(ctx)
 		if err != nil {
 			return err
 		}

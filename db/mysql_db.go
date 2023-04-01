@@ -53,8 +53,8 @@ func (m *MySqlDb) ExistTable(ctx context.Context) (bool, error) {
 	return count == 1, nil
 }
 
-// CreateTable 创建依赖表
-func (m *MySqlDb) CreateTable(ctx context.Context) error {
+// InitTable 创建依赖表
+func (m *MySqlDb) InitTable(ctx context.Context) error {
 
 	sql := "CREATE TABLE `" + mysqlTableName + "` (\n" +
 		"\t`id` bigint NOT NULL,\n" +
@@ -72,7 +72,7 @@ func (m *MySqlDb) CreateTable(ctx context.Context) error {
 
 	_, err := _dbConn.ExecContext(ctx, sql)
 	if err != nil {
-		log.Error(ctx, consts.ErrMsgDatabaseCreateTableFail.Error(), err)
+		log.Error(ctx, consts.ErrMsgDatabaseInitTableFail.Error(), err)
 	}
 	return err
 }
