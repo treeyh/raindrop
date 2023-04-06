@@ -26,11 +26,8 @@ type IDb interface {
 	// ExistTable 表是否存在
 	ExistTable(ctx context.Context) (bool, error)
 
-	// InitTable 创建表
-	InitTable(ctx context.Context) error
-
-	// InitWorkers 初始化workers
-	InitWorkers(ctx context.Context, beginId int64, endId int64) error
+	// InitTableWorkers 初始化workers
+	InitTableWorkers(ctx context.Context, beginId int64, endId int64) error
 
 	// GetBeforeWorker 找到该节点之前的worker
 	GetBeforeWorker(ctx context.Context, code string, timeUnit int) (*model.RaindropWorker, error)
@@ -77,15 +74,12 @@ func InitTableWorkers(ctx context.Context, beginId int64, endId int64) error {
 	if err != nil {
 		return err
 	}
-	if !exist {
-		err = Db.InitTable(ctx)
-		if err != nil {
-			return err
-		}
-		err = Db.InitWorkers(ctx, beginId, endId)
-		if err != nil {
-			return err
-		}
+	if exist {
+		return nil
+	}
+	err = Db.InitTableWorkers(ctx, beginId, endId)
+	if err != nil {
+		return err
 	}
 	return err
 }

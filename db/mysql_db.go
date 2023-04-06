@@ -15,6 +15,20 @@ const (
 	mysqlTableName = "soc_raindrop_worker"
 
 	mysqlPreSelectSql = "SELECT `id`, `code`, `time_unit`, `heartbeat_time`, `create_time`, `update_time`, `version`, `del_flag` FROM " + mysqlTableName + " WHERE `del_flag` = 2 "
+
+	mysqlCreateTableSql = "CREATE TABLE `" + mysqlTableName + "` (\n" +
+		"\t`id` bigint NOT NULL,\n" +
+		"\t`code` varchar(128) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',\n" +
+		"\t`time_unit` tinyint NOT NULL DEFAULT '2',\n" +
+		"\t`heartbeat_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,\n" +
+		"\t`create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,\n" +
+		"\t`update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" +
+		"\t`version` bigint NOT NULL DEFAULT '1',\n" +
+		"\t`del_flag` tinyint NOT NULL DEFAULT '2',\n" +
+		"\tPRIMARY KEY (`id`),\n" +
+		"\tKEY `idx_soc_raindrop_worker_heartbeat_time` (`heartbeat_time`),\n" +
+		"\tKEY `idx_soc_raindrop_worker_code` (`code`)\n" +
+		"\t) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;"
 )
 
 type MySqlDb struct {
@@ -53,32 +67,8 @@ func (m *MySqlDb) ExistTable(ctx context.Context) (bool, error) {
 	return count == 1, nil
 }
 
-// InitTable 创建依赖表
-func (m *MySqlDb) InitTable(ctx context.Context) error {
-
-	sql := "CREATE TABLE `" + mysqlTableName + "` (\n" +
-		"\t`id` bigint NOT NULL,\n" +
-		"\t`code` varchar(128) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',\n" +
-		"\t`time_unit` tinyint NOT NULL DEFAULT '2',\n" +
-		"\t`heartbeat_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,\n" +
-		"\t`create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,\n" +
-		"\t`update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" +
-		"\t`version` bigint NOT NULL DEFAULT '1',\n" +
-		"\t`del_flag` tinyint NOT NULL DEFAULT '2',\n" +
-		"\tPRIMARY KEY (`id`),\n" +
-		"\tKEY `idx_soc_raindrop_worker_heartbeat_time` (`heartbeat_time`),\n" +
-		"\tKEY `idx_soc_raindrop_worker_code` (`code`)\n" +
-		"\t) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;"
-
-	_, err := _dbConn.ExecContext(ctx, sql)
-	if err != nil {
-		log.Error(ctx, consts.ErrMsgDatabaseInitTableFail.Error(), err)
-	}
-	return err
-}
-
-// InitWorkers 初始化数据
-func (m *MySqlDb) InitWorkers(ctx context.Context, beginId int64, endId int64) error {
+// InitTableWorkers 初始化数据
+func (m *MySqlDb) InitTableWorkers(ctx context.Context, beginId int64, endId int64) error {
 	if beginId > endId {
 		err := errors.New("endId must be greater than beginId")
 		log.Error(ctx, err.Error(), err)
@@ -90,7 +80,7 @@ func (m *MySqlDb) InitWorkers(ctx context.Context, beginId int64, endId int64) e
 		values = append(values, "("+strconv.FormatInt(i, 10)+", '2023-01-01 00:00:00')")
 	}
 
-	sql := "INSERT INTO " + mysqlTableName + "(`id`, `heartbeat_time`) VALUES " + strings.Join(values, ",") + ";"
+	sql := mysqlCreateTableSql + " INSERT INTO " + mysqlTableName + "(`id`, `heartbeat_time`) VALUES " + strings.Join(values, ",") + ";"
 
 	_, err := _dbConn.ExecContext(ctx, sql)
 	if err != nil {
