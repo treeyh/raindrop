@@ -13,8 +13,8 @@ import (
 
 var (
 	//Db      *IDb
-	Db      *MySqlDb
-	_dbConn *sql.DB
+	Db  *MySqlDb
+	_db *sql.DB
 
 	log logger.ILogger
 )
@@ -50,16 +50,16 @@ func InitMySqlDb(ctx context.Context, dbConfig config.RainDropDbConfig, l logger
 	log = l
 
 	var err error
-	_dbConn, err = sql.Open(dbConfig.DbType, dbConfig.DbUrl)
+	_db, err = sql.Open(dbConfig.DbType, dbConfig.DbUrl)
 	if err != nil {
 		log.Error(ctx, consts.ErrMsgDatabaseInitFail.Error(), err)
 		return err
 	}
 
-	_dbConn.SetMaxOpenConns(consts.DbMaxOpenConns)
-	_dbConn.SetMaxIdleConns(consts.DbMaxIdleConns)
+	_db.SetMaxOpenConns(consts.DbMaxOpenConns)
+	_db.SetMaxIdleConns(consts.DbMaxIdleConns)
 
-	err = _dbConn.Ping()
+	err = _db.Ping()
 	if err != nil {
 		log.Error(ctx, consts.ErrMsgDatabaseInitFail.Error(), err)
 		return err

@@ -37,7 +37,7 @@ type MySqlDb struct {
 // GetNowTime 获取数据库当前时间
 func (m *MySqlDb) GetNowTime(ctx context.Context) (time.Time, error) {
 	var now time.Time
-	err := _dbConn.QueryRowContext(ctx, "SELECT NOW() as now;").Scan(&now)
+	err := _db.QueryRowContext(ctx, "SELECT NOW() as now;").Scan(&now)
 
 	if err != nil {
 		log.Error(ctx, consts.ErrMsgDatabaseGetNowTimeFail.Error(), err)
@@ -48,7 +48,7 @@ func (m *MySqlDb) GetNowTime(ctx context.Context) (time.Time, error) {
 
 func (m *MySqlDb) getDatabaseName(ctx context.Context) string {
 	var dbName string
-	_dbConn.QueryRowContext(ctx, "SELECT DATABASE();").Scan(&dbName)
+	_db.QueryRowContext(ctx, "SELECT DATABASE();").Scan(&dbName)
 	return dbName
 }
 
@@ -57,7 +57,7 @@ func (m *MySqlDb) ExistTable(ctx context.Context) (bool, error) {
 	dbName := m.getDatabaseName(ctx)
 
 	var count int
-	err := _dbConn.QueryRowContext(ctx, "SELECT count(*) FROM information_schema.tables WHERE table_schema = ? AND table_name = ? AND table_type = ?", dbName, mysqlTableName, "BASE TABLE").Scan(&count)
+	err := _db.QueryRowContext(ctx, "SELECT count(*) FROM information_schema.tables WHERE table_schema = ? AND table_name = ? AND table_type = ?", dbName, mysqlTableName, "BASE TABLE").Scan(&count)
 
 	if err != nil {
 		log.Error(ctx, err.Error(), err)
@@ -74,18 +74,38 @@ func (m *MySqlDb) InitTableWorkers(ctx context.Context, beginId int64, endId int
 		log.Error(ctx, err.Error(), err)
 		return err
 	}
+
 	values := make([]string, 0)
 
 	for i := beginId; i <= endId; i++ {
 		values = append(values, "("+strconv.FormatInt(i, 10)+", '2023-01-01 00:00:00')")
 	}
 
-	sql := mysqlCreateTableSql + " INSERT INTO " + mysqlTableName + "(`id`, `heartbeat_time`) VALUES " + strings.Join(values, ",") + ";"
+	rowsSql := "INSERT INTO " + mysqlTableName + "(`id`, `heartbeat_time`) VALUES " + strings.Join(values, ",") + ";"
 
-	_, err := _dbConn.ExecContext(ctx, sql)
+	tx, err := _db.Begin()
 	if err != nil {
-		log.Error(ctx, consts.ErrMsgDatabaseInitWorkersFail.Error(), err)
+		log.Error(ctx, err.Error(), err)
+		if tx != nil {
+			tx.Rollback()
+		}
+		return err
 	}
+
+	_, err = tx.ExecContext(ctx, mysqlCreateTableSql)
+	if err != nil {
+		log.Error(ctx, err.Error(), err)
+		tx.Rollback()
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, rowsSql)
+	if err != nil {
+		log.Error(ctx, err.Error(), err)
+		tx.Rollback()
+		return err
+	}
+	err = tx.Commit()
 	return err
 }
 
@@ -93,7 +113,7 @@ func (m *MySqlDb) InitTableWorkers(ctx context.Context, beginId int64, endId int
 func (m *MySqlDb) GetBeforeWorker(ctx context.Context, code string) (*model.RaindropWorker, error) {
 	var worker model.RaindropWorker
 	s := mysqlPreSelectSql + "AND `code` = ? ORDER BY `id` asc LIMIT 0,1 "
-	err := _dbConn.QueryRowContext(ctx, s, code).Scan(&worker.Id, &worker.Code,
+	err := _db.QueryRowContext(ctx, s, code).Scan(&worker.Id, &worker.Code,
 		&worker.TimeUnit, &worker.HeartbeatTime, &worker.CreateTime, &worker.UpdateTime, &worker.Version, &worker.DelFlag)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -110,7 +130,7 @@ func (m *MySqlDb) GetBeforeWorker(ctx context.Context, code string) (*model.Rain
 func (m *MySqlDb) QueryFreeWorkers(ctx context.Context, heartbeatTime time.Time) ([]model.RaindropWorker, error) {
 	workers := make([]model.RaindropWorker, 0)
 	s := mysqlPreSelectSql + "AND `heartbeat_time` < ? "
-	rows, err := _dbConn.QueryContext(ctx, s, heartbeatTime)
+	rows, err := _db.QueryContext(ctx, s, heartbeatTime)
 	if err != nil {
 		log.Error(ctx, "query workers fail", err)
 		return nil, err
@@ -133,7 +153,7 @@ func (m *MySqlDb) QueryFreeWorkers(ctx context.Context, heartbeatTime time.Time)
 func (m *MySqlDb) ActivateWorker(ctx context.Context, id int64, code string, timeUnit int, version int64) (*model.RaindropWorker, error) {
 	sql := "UPDATE `" + mysqlTableName + "` SET `code` = ?, `time_unit` = ?, `version` = `version` + 1, `heartbeat_time` = ? WHERE `id` = ? AND `version` = ? "
 
-	result, err := _dbConn.ExecContext(ctx, sql, code, timeUnit, time.Now(), id, version)
+	result, err := _db.ExecContext(ctx, sql, code, timeUnit, time.Now(), id, version)
 	if err != nil {
 		log.Error(ctx, "heartbeat worker fail!!!", err)
 		return nil, err
@@ -170,7 +190,7 @@ func (m *MySqlDb) ActivateWorker(ctx context.Context, id int64, code string, tim
 func (m *MySqlDb) HeartbeatWorker(ctx context.Context, worker *model.RaindropWorker) (*model.RaindropWorker, error) {
 	sql := "UPDATE `" + mysqlTableName + "` SET `version` = `version` + 1, `heartbeat_time` = ? WHERE `id` = ? AND `version` = ? "
 
-	result, err := _dbConn.ExecContext(ctx, sql, time.Now(), worker.Id, worker.Version)
+	result, err := _db.ExecContext(ctx, sql, time.Now(), worker.Id, worker.Version)
 	if err != nil {
 		log.Error(ctx, "heartbeat worker fail!!!", err)
 	}
@@ -196,7 +216,7 @@ func (m *MySqlDb) GetWorkerById(ctx context.Context, id int64) (*model.RaindropW
 	s := mysqlPreSelectSql + " AND `id` = ? "
 	var worker model.RaindropWorker
 
-	err := _dbConn.QueryRowContext(ctx, s, id).Scan(&worker.Id, &worker.Code, &worker.TimeUnit, &worker.HeartbeatTime,
+	err := _db.QueryRowContext(ctx, s, id).Scan(&worker.Id, &worker.Code, &worker.TimeUnit, &worker.HeartbeatTime,
 		&worker.CreateTime, &worker.UpdateTime, &worker.Version, &worker.DelFlag)
 
 	if err != nil {
