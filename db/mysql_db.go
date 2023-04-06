@@ -100,10 +100,10 @@ func (m *MySqlDb) InitWorkers(ctx context.Context, beginId int64, endId int64) e
 }
 
 // GetBeforeWorker 找到该节点之前的worker
-func (m *MySqlDb) GetBeforeWorker(ctx context.Context, code string, timeUnit int) (*model.RaindropWorker, error) {
+func (m *MySqlDb) GetBeforeWorker(ctx context.Context, code string) (*model.RaindropWorker, error) {
 	var worker model.RaindropWorker
-	s := mysqlPreSelectSql + "AND `code` = ? AND `time_unit` = ? ORDER BY `id` asc LIMIT 0,1 "
-	err := _dbConn.QueryRowContext(ctx, s, code, timeUnit).Scan(&worker.Id, &worker.Code,
+	s := mysqlPreSelectSql + "AND `code` = ? ORDER BY `id` asc LIMIT 0,1 "
+	err := _dbConn.QueryRowContext(ctx, s, code).Scan(&worker.Id, &worker.Code,
 		&worker.TimeUnit, &worker.HeartbeatTime, &worker.CreateTime, &worker.UpdateTime, &worker.Version, &worker.DelFlag)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

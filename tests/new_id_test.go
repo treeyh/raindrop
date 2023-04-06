@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"github.com/stretchr/testify/assert"
 	"github.com/treeyh/raindrop"
 	"github.com/treeyh/raindrop/worker"
 	"testing"
@@ -58,6 +59,41 @@ func TestBenchmarkNewId(t *testing.T) {
 	}
 
 	time.Sleep(time.Duration(60) * time.Second)
+}
+
+// TestSimpleLongTimeNewId 获取长时间获取id
+func TestSimpleLongTimeNewId(t *testing.T) {
+	ctx := getTestContext()
+	//conf := getTestSimpleMillisecondConfig()
+	conf := getTestSecondConfig()
+
+	dropTestWorkerTable(ctx)
+
+	raindrop.Init(ctx, conf)
+	if worker.GetWorkerId(ctx) != minWorkerId {
+		t.Fatalf("%s worker id get error.", t.Name())
+	}
+
+	t.Logf("%s pass.", t.Name())
+
+	batchNewId(ctx, t, 0, true)
+
+	time.Sleep(time.Duration(10) * time.Second)
+
+	endTime := time.Now().Add(time.Duration(5) * time.Hour)
+
+	for true {
+		id, err := worker.NewId(ctx)
+		assert.NoError(t, err)
+		t.Logf("new id: %d", id)
+
+		if endTime.Unix() < time.Now().Unix() {
+			break
+		}
+		time.Sleep(time.Duration(5) * time.Second)
+	}
+
+	t.Log("End")
 }
 
 func batchNewId(ctx context.Context, t *testing.T, index int, logFlag bool) {
