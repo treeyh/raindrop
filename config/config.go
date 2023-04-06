@@ -138,6 +138,44 @@ func CheckConfig(ctx context.Context, conf *RainDropConfig) error {
 		return errors.New("ServicePort range between 0 and 65535")
 	}
 
+	err := checkTimeUnitConfig(ctx, conf)
+	if err != nil {
+		return err
+	}
+
+	err = checkWorkIdConfig(ctx, conf)
+	if err != nil {
+		return err
+	}
+
+	if time.Now().Unix() < conf.StartTimeStamp.Unix() {
+		return consts.ErrMsgStartTimeStampError
+	}
+
+	if conf.TimeBackBitValue != 0 && conf.TimeBackBitValue != 1 {
+		return errors.New("TimeBackBitValue value is 0 or 1")
+	}
+
+	if conf.EndBitsLength < 0 || conf.EndBitsLength > 5 {
+		return errors.New("EndBitsLength needs to be between 0 and 5")
+	} else if conf.EndBitsLength > 0 {
+		maxEndBitsValue := (1 << conf.EndBitsLength) - 1
+		if conf.EndBitsValue > maxEndBitsValue || conf.EndBitsLength < 0 {
+			return errors.New("EndBitsValue The value range is not in the EndBitsLength range")
+		}
+	} else {
+		conf.EndBitsValue = 0
+	}
+
+	seqLength := consts.IdBitLength - conf.TimeStampLength - conf.WorkIdLength - consts.TimeBackBitLength - conf.EndBitsLength
+	if seqLength < 1 {
+		return errors.New("Sequence number occupies at least 1 bit")
+	}
+	return nil
+}
+
+func checkTimeUnitConfig(ctx context.Context, conf *RainDropConfig) error {
+
 	switch conf.TimeUnit {
 	case consts.TimeUnitMillisecond:
 		if conf.TimeStampLength < 41 || conf.TimeStampLength > 55 {
@@ -160,6 +198,10 @@ func CheckConfig(ctx context.Context, conf *RainDropConfig) error {
 			return errors.New("When TimeUnit is day, TimeLength must be between 15 and 40")
 		}
 	}
+	return nil
+}
+
+func checkWorkIdConfig(ctx context.Context, conf *RainDropConfig) error {
 
 	if conf.WorkIdLength < 3 || conf.WorkIdLength > 10 {
 		return errors.New("WorkIdLength takes values between 3 and 10")
@@ -202,30 +244,6 @@ func CheckConfig(ctx context.Context, conf *RainDropConfig) error {
 		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 1023 {
 			return errors.New("When WorkIdLength is 10, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 1023")
 		}
-	}
-
-	if time.Now().Unix() < conf.StartTimeStamp.Unix() {
-		return consts.ErrMsgStartTimeStampError
-	}
-
-	if conf.TimeBackBitValue != 0 && conf.TimeBackBitValue != 1 {
-		return errors.New("TimeBackBitValue value is 0 or 1")
-	}
-
-	if conf.EndBitsLength < 0 || conf.EndBitsLength > 5 {
-		return errors.New("EndBitsLength needs to be between 0 and 5")
-	} else if conf.EndBitsLength > 0 {
-		maxEndBitsValue := (1 << conf.EndBitsLength) - 1
-		if conf.EndBitsValue > maxEndBitsValue {
-			return errors.New("EndBitsValue is greater than the maximum value of EndBitsLength")
-		}
-	} else {
-		conf.EndBitsValue = 0
-	}
-
-	seqLength := consts.IdBitLength - conf.TimeStampLength - conf.WorkIdLength - consts.TimeBackBitLength - conf.EndBitsLength
-	if seqLength < 1 {
-		return errors.New("Sequence number occupies at least 1 bit")
 	}
 	return nil
 }

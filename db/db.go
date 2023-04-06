@@ -30,7 +30,7 @@ type IDb interface {
 	InitTableWorkers(ctx context.Context, beginId int64, endId int64) error
 
 	// GetBeforeWorker 找到该节点之前的worker
-	GetBeforeWorker(ctx context.Context, code string, timeUnit int) (*model.RaindropWorker, error)
+	GetBeforeWorker(ctx context.Context, code string) (*model.RaindropWorker, error)
 
 	// QueryFreeWorkers 查询空闲的workers
 	QueryFreeWorkers(ctx context.Context, heartbeatTime time.Time) ([]model.RaindropWorker, error)

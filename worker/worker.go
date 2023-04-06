@@ -167,11 +167,11 @@ func activateWorker(ctx context.Context, conf config.RainDropConfig) (*model.Rai
 		log.Error(ctx, "get local ip fail", err)
 		return nil, err
 	}
-	workerCode = ip + ":" + strconv.Itoa(conf.ServicePort) + "#" + utils.GetFirstMacAddr()
 	timeUnit = conf.TimeUnit
+	workerCode = ip + "#" + strconv.Itoa(conf.ServicePort) + "#" + strconv.Itoa(int(timeUnit)) + "#" + utils.GetFirstMacAddr()
 
 	if conf.PriorityEqualCodeWorkId && (timeUnit == consts.TimeUnitMillisecond || timeUnit == consts.TimeUnitSecond) {
-		w, e := db.Db.GetBeforeWorker(ctx, workerCode, int(timeUnit))
+		w, e := db.Db.GetBeforeWorker(ctx, workerCode)
 
 		if e != nil {
 			return nil, err
