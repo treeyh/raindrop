@@ -24,8 +24,8 @@ var (
 	// ErrMsgStartTimeStampError 开始时间戳大于当前时间
 	ErrMsgStartTimeStampError = errors.New("StartTimeStamp is greater than the current time")
 
-	// ErrMsgServerClockBackwardsError 服务器时钟向后移动，无法生成id。
-	ErrMsgServerClockBackwardsError = errors.New("Server clock moved backwards and id could not be generated")
+	// ErrMsgServerClockBackwardsError 服务器时钟向后移动。
+	ErrMsgServerClockBackwardsError = errors.New("Server clock moved backwards")
 
 	// ErrMsgIdSeqReachesMaxValueError 当前时刻id生成序列达到最大值
 	ErrMsgIdSeqReachesMaxValueError = errors.New("The current moment id generation sequence reaches its maximum value")

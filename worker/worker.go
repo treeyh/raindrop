@@ -229,13 +229,6 @@ func NewId(ctx context.Context) (int64, error) {
 		seq = newIdSeq.Add(1)
 		if seq > maxIdSeq {
 			// 超过了序列最大值
-			if timeUnit != consts.TimeUnitMillisecond && timeUnit != consts.TimeUnitSecond {
-				// 不是毫秒或秒时间单位，不等待直接返回错误
-				log.Error(ctx, fmt.Sprintf("timeUnit: %d, timeSeq: %d, seq: %d, maxIdSeq: %d",
-					int(timeUnit), timestamp, seq, maxIdSeq))
-				return 0, consts.ErrMsgIdSeqReachesMaxValueError
-			}
-
 			// 毫秒，秒还能抢救一下
 			if timeUnit == consts.TimeUnitMillisecond {
 				if logLevel <= logger.Debug {
@@ -247,7 +240,7 @@ func NewId(ctx context.Context) (int64, error) {
 						break
 					}
 				}
-			} else {
+			} else if timeUnit == consts.TimeUnitSecond {
 				if logLevel <= logger.Debug {
 					log.Debug(ctx, fmt.Sprintf("second unit sleep %d, seq: %d, maxIdSeq: %d", timestamp, seq, maxIdSeq))
 				}
@@ -258,6 +251,11 @@ func NewId(ctx context.Context) (int64, error) {
 						break
 					}
 				}
+			} else {
+				// 不是毫秒或秒时间单位，不等待直接返回错误
+				log.Error(ctx, fmt.Sprintf("timeUnit: %d, timeSeq: %d, seq: %d, maxIdSeq: %d",
+					int(timeUnit), timestamp, seq, maxIdSeq))
+				return 0, consts.ErrMsgIdSeqReachesMaxValueError
 			}
 			seq = 0
 			newIdSeq.Store(0)
@@ -306,9 +304,8 @@ func NewIdByCode(ctx context.Context, code string) (int64, error) {
 		}
 	}
 
-	//newIdByCodeTimeSeqMap[code] = lastTime
-	//newIdByCodeSeqMap[code] = seq
-	timeBackValue := timeBackBitValue.Load()
+	timeBack, _ := newIdByCodeTimeBackValueMap[code]
+	timeBackValue := timeBack.Load()
 	timestamp := nowTimeSeq.Load()
 
 	codeIdSeq, _ := newIdByCodeSeqMap[code]
@@ -322,12 +319,6 @@ func NewIdByCode(ctx context.Context, code string) (int64, error) {
 		seq = codeIdSeq.Add(1)
 		if seq > maxIdSeq {
 			// 超过了序列最大值
-			if timeUnit != consts.TimeUnitMillisecond && timeUnit != consts.TimeUnitSecond {
-				// 不是毫秒或秒时间单位，不等待直接返回错误
-				log.Error(ctx, fmt.Sprintf("code:%s, timeUnit: %d, timeSeq: %d, seq: %d, maxIdSeq: %d",
-					code, int(timeUnit), timestamp, seq, maxIdSeq))
-				return 0, consts.ErrMsgIdSeqReachesMaxValueError
-			}
 
 			// 毫秒，秒还能抢救一下
 			if timeUnit == consts.TimeUnitMillisecond {
@@ -336,21 +327,26 @@ func NewIdByCode(ctx context.Context, code string) (int64, error) {
 				}
 				for {
 					timestamp = nowTimeSeq.Load()
-					if timestamp > lastTimeSeq {
+					if timestamp != lastTimeSeq {
 						break
 					}
 				}
-			} else {
+			} else if timeUnit == consts.TimeUnitSecond {
 				if logLevel <= logger.Debug {
 					log.Debug(ctx, fmt.Sprintf("code:%s, second unit sleep %d, seq: %d, maxIdSeq: %d", code, timestamp, seq, maxIdSeq))
 				}
 				for {
 					time.Sleep(time.Duration(10) * time.Millisecond)
 					timestamp = nowTimeSeq.Load()
-					if timestamp > lastTimeSeq {
+					if timestamp != lastTimeSeq {
 						break
 					}
 				}
+			} else {
+				// 不是毫秒或秒时间单位，不等待直接返回错误
+				log.Error(ctx, fmt.Sprintf("code:%s, timeUnit: %d, timeSeq: %d, seq: %d, maxIdSeq: %d",
+					code, int(timeUnit), timestamp, seq, maxIdSeq))
+				return 0, consts.ErrMsgIdSeqReachesMaxValueError
 			}
 			seq = 0
 			codeIdSeq.Store(0)
