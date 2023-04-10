@@ -59,21 +59,18 @@ func startHeartbeat(ctx context.Context) {
 }
 
 func heartbeat(ctx context.Context) error {
-	log.Info(ctx, "worker heartbeat start. workerId: "+strconv.FormatInt(worker.Id, 10))
+	log.Info(ctx, "worker heartbeat. workerId: "+strconv.FormatInt(worker.Id, 10))
 	w, err := db.Db.HeartbeatWorker(ctx, worker)
-	log.Info(ctx, "worker heartbeat end. workerId: "+strconv.FormatInt(worker.Id, 10))
 	if err != nil {
 		log.Error(ctx, err.Error(), err)
 	}
-	if w != nil {
-		if logLevel <= logger.Debug {
-			log.Debug(ctx, "worker heartbeat worker: "+utils.ToJsonIgnoreError(w))
-		}
-		if w.UpdateTime.Unix() > w.HeartbeatTime.Unix()+consts.HeartbeatTimeInterval ||
-			w.UpdateTime.Unix() < w.HeartbeatTime.Unix()-consts.HeartbeatTimeInterval {
-			log.Error(ctx, consts.ErrMsgDatabaseServerTimeInterval.Error()+". worker:"+utils.ToJsonIgnoreError(w))
-		}
-		worker = w
+	if logLevel <= logger.Debug {
+		log.Debug(ctx, "worker heartbeat worker: "+utils.ToJsonIgnoreError(w))
 	}
+	if w.UpdateTime.Unix() > w.HeartbeatTime.Unix()+consts.HeartbeatTimeInterval ||
+		w.UpdateTime.Unix() < w.HeartbeatTime.Unix()-consts.HeartbeatTimeInterval {
+		log.Error(ctx, consts.ErrMsgDatabaseServerTimeInterval.Error()+". worker:"+utils.ToJsonIgnoreError(w))
+	}
+	worker = w
 	return err
 }

@@ -32,12 +32,9 @@ var (
 	// endBitsValue 最后预留位bit值
 	endBitsValue int64
 
-	// timeBackBitValue 时间回拨值
-	timeBackBitValue atomic.Int64
-
 	// timeStampShift 时间戳位移位数
 	timeStampShift int
-	// workerId 位移位数
+	// workerIdShift 位移位数
 	workerIdShift int
 	// timeBackShift 时间回拨位移位数
 	timeBackShift int
@@ -49,25 +46,27 @@ var (
 	// startTime 开始计算时间戳，毫秒
 	startTime int64
 
-	// 当前时间流水，当前时刻毫秒 - startTime,换算时间单位取整
+	// nowTimeSeq 当前时间流水，当前时刻毫秒 - startTime,换算时间单位取整
 	nowTimeSeq atomic.Int64
 
-	// 获取新id的锁
+	// newIdLock 获取新id的锁
 	newIdLock sync.Mutex
-	// 上次的获取新id时间序列
+	// newIdLastTimeSeq 上次的获取新id时间序列
 	newIdLastTimeSeq atomic.Int64
-	// 获取新id同一时间的自增序列
+	// timeBackBitValue 时间回拨值
+	timeBackBitValue atomic.Int64
+	// newIdSeq 获取新id同一时间的自增序列
 	newIdSeq atomic.Int64
 
-	// 基于code获取新id的生成code锁的锁
+	// newCodeLockLock 基于code获取新id的生成code锁的锁
 	newCodeLockLock sync.Mutex
-	// 获取基于code新id的锁
+	// newIdByCodeLockMap 获取基于code新id的锁
 	newIdByCodeLockMap = make(map[string]sync.Mutex)
-	// 上次的获取基于code新id时间序列
+	// newIdByCodeTimeSeqMap 上次的获取基于code新id时间序列
 	newIdByCodeTimeSeqMap = make(map[string]atomic.Int64)
-	// 基于code 时间回拨值
+	// newIdByCodeTimeBackValueMap 基于code 时间回拨值
 	newIdByCodeTimeBackValueMap = make(map[string]atomic.Int64)
-	// 获取基于code新id同一时间的自增序列
+	// newIdByCodeSeqMap 获取基于code新id同一时间的自增序列
 	newIdByCodeSeqMap = make(map[string]atomic.Int64)
 )
 
@@ -86,12 +85,12 @@ func Init(ctx context.Context, conf config.RainDropConfig) error {
 	}
 	worker = w
 
+	initParams(ctx, conf)
+
 	err = calcNowTimeSeq(ctx)
 	if err != nil {
 		return err
 	}
-
-	initParams(ctx, conf)
 
 	if v := ctx.Value(consts.ProjectName); v != nil {
 		// 支持单元测试，跳过启动心跳线程
@@ -100,8 +99,8 @@ func Init(ctx context.Context, conf config.RainDropConfig) error {
 		}
 	}
 
-	go startCalcNowTimeSeq(ctx)
 	go startHeartbeat(ctx)
+	go startCalcNowTimeSeq(ctx)
 
 	return nil
 }
@@ -136,13 +135,15 @@ func calcTimestamp(ctx context.Context, timestampMilli int64, timeUnit consts.Ti
 // initParams 初始化参数
 func initParams(ctx context.Context, conf config.RainDropConfig) {
 	idMode = strings.ToLower(conf.IdMode)
+	workerId = worker.Id
+	timeUnit = conf.TimeUnit
+
 	timeBackInitValue = int64(conf.TimeBackBitValue)
-	timeBackBitValue.Store(int64(conf.TimeBackBitValue))
+	timeBackBitValue.Store(timeBackInitValue)
 	endBitsValue = int64(conf.EndBitsValue)
 
 	startTime = calcTimestamp(ctx, conf.StartTimeStamp.UnixMilli(), conf.TimeUnit)
 
-	workerId = worker.Id
 	seqLength := consts.IdBitLength - conf.TimeStampLength - conf.WorkIdLength - consts.TimeBackBitLength - conf.EndBitsLength
 
 	// 计算同一时刻最大流水号

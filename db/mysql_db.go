@@ -199,7 +199,7 @@ func (m *MySqlDb) HeartbeatWorker(ctx context.Context, worker *model.RaindropWor
 		log.Error(ctx, "heartbeat worker fail!!!", err)
 	}
 	if count != 1 {
-		log.Error(ctx, "heartbeat worker fail!!! result: "+strconv.FormatInt(count, 10))
+		log.Error(ctx, "heartbeat worker fail!!! id:"+strconv.FormatInt(worker.Id, 10)+" result: "+strconv.FormatInt(count, 10))
 	}
 
 	w, _ := m.GetWorkerById(ctx, worker.Id)

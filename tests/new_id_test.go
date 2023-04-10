@@ -80,7 +80,7 @@ func TestSimpleLongTimeNewId(t *testing.T) {
 
 	time.Sleep(time.Duration(10) * time.Second)
 
-	endTime := time.Now().Add(time.Duration(5) * time.Hour)
+	endTime := time.Now().Add(time.Duration(6) * time.Hour)
 
 	for true {
 		id, err := worker.NewId(ctx)
