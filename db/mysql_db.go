@@ -129,7 +129,7 @@ func (m *MySqlDb) GetBeforeWorker(ctx context.Context, code string) (*model.Rain
 // QueryFreeWorkers 获取空闲的worker列表
 func (m *MySqlDb) QueryFreeWorkers(ctx context.Context, heartbeatTime time.Time) ([]model.RaindropWorker, error) {
 	workers := make([]model.RaindropWorker, 0)
-	s := mysqlPreSelectSql + "AND `heartbeat_time` < ? "
+	s := mysqlPreSelectSql + "AND `heartbeat_time` < ? ORDER BY `heartbeat_time` ASC "
 	rows, err := _db.QueryContext(ctx, s, heartbeatTime)
 	if err != nil {
 		log.Error(ctx, "query workers fail", err)
