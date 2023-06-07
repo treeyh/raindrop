@@ -22,6 +22,8 @@ const (
 
 var (
 	_dbConn *sql.DB
+
+	tableName = "soc_raindrop_worker"
 )
 
 func init() {
@@ -41,8 +43,9 @@ func getTestContext() context.Context {
 
 func getTestMySqlConfig() config.RainDropDbConfig {
 	return config.RainDropDbConfig{
-		DbType: "mysql",
-		DbUrl:  "root:mysqlpw@(192.168.80.137:3306)/raindrop_db?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai",
+		DbType:    "mysql",
+		DbUrl:     "root:mysqlpw@(172.25.100.40:3306)/raindrop_db?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai",
+		TableName: tableName,
 		//DbUrl: "root:7Dv_v2VxnZ8PgG26f@(192.168.0.134:3306)/raindrop_db?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai",
 	}
 }
@@ -154,14 +157,14 @@ func initTestMySqlDb(ctx context.Context) error {
 
 // dropTestWorkerTable 删除表
 func dropTestWorkerTable(ctx context.Context) error {
-	s := "DROP TABLE soc_raindrop_worker;"
+	s := "DROP TABLE " + tableName + ";"
 	_, err := _dbConn.ExecContext(ctx, s)
 	return err
 }
 
 // updateWorker 更新 Worker
 func updateWorker(ctx context.Context, id int64, code string, timeUnit int, heartbeatTime time.Time) error {
-	s := "UPDATE soc_raindrop_worker SET code = ?, time_unit = ?, heartbeat_time = ? WHERE id = ? "
+	s := "UPDATE " + tableName + " SET code = ?, time_unit = ?, heartbeat_time = ? WHERE id = ? "
 	_, err := _dbConn.ExecContext(ctx, s)
 	return err
 }

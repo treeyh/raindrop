@@ -15,6 +15,9 @@ type RainDropDbConfig struct {
 
 	// 数据库连接，{user}:{password}@({host}:{port})/{dbName}?charset=utf8mb4&parseTime=True&loc={Asia%2FShanghai}
 	DbUrl string `json:"dbUrl"`
+
+	// 数据库表名，默认为 soc_raindrop_worker
+	TableName string `json:"tableName"`
 }
 
 type RainDropConfig struct {
@@ -132,6 +135,10 @@ func CheckConfig(ctx context.Context, conf *RainDropConfig) error {
 	idMode := strings.ToLower(conf.IdMode)
 	if idMode != consts.IdModeSnowflake && idMode != consts.IdModeNumberSection {
 		conf.IdMode = consts.IdModeSnowflake
+	}
+
+	if conf.DbConfig.DbType == "" {
+		conf.DbConfig.DbType = consts.DbTypeMySql
 	}
 
 	if conf.ServicePort < 0 || conf.ServicePort > 65535 {

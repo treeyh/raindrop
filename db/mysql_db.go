@@ -11,12 +11,16 @@ import (
 	"time"
 )
 
-const (
-	mysqlTableName = "soc_raindrop_worker"
+type MySqlDb struct {
+	tableName      string
+	preSelectSql   string
+	createTableSql string
+}
 
-	mysqlPreSelectSql = "SELECT `id`, `code`, `time_unit`, `heartbeat_time`, `create_time`, `update_time`, `version`, `del_flag` FROM " + mysqlTableName + " WHERE `del_flag` = 2 "
-
-	mysqlCreateTableSql = "CREATE TABLE `" + mysqlTableName + "` (\n" +
+func (m *MySqlDb) InitSql(tableName string) {
+	m.tableName = tableName
+	m.preSelectSql = "SELECT `id`, `code`, `time_unit`, `heartbeat_time`, `create_time`, `update_time`, `version`, `del_flag` FROM `" + m.tableName + "` WHERE `del_flag` = 2 "
+	m.createTableSql = "CREATE TABLE `" + m.tableName + "` (\n" +
 		"\t`id` bigint NOT NULL,\n" +
 		"\t`code` varchar(128) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',\n" +
 		"\t`time_unit` tinyint NOT NULL DEFAULT '2',\n" +
@@ -29,9 +33,6 @@ const (
 		"\tKEY `idx_soc_raindrop_worker_heartbeat_time` (`heartbeat_time`),\n" +
 		"\tKEY `idx_soc_raindrop_worker_code` (`code`)\n" +
 		"\t) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;"
-)
-
-type MySqlDb struct {
 }
 
 // GetNowTime 获取数据库当前时间
@@ -57,7 +58,7 @@ func (m *MySqlDb) ExistTable(ctx context.Context) (bool, error) {
 	dbName := m.getDatabaseName(ctx)
 
 	var count int
-	err := _db.QueryRowContext(ctx, "SELECT count(*) FROM information_schema.tables WHERE table_schema = ? AND table_name = ? AND table_type = ?", dbName, mysqlTableName, "BASE TABLE").Scan(&count)
+	err := _db.QueryRowContext(ctx, "SELECT count(*) FROM information_schema.tables WHERE table_schema = ? AND table_name = ? AND table_type = ?", dbName, m.tableName, "BASE TABLE").Scan(&count)
 
 	if err != nil {
 		log.Error(ctx, err.Error(), err)
@@ -81,7 +82,7 @@ func (m *MySqlDb) InitTableWorkers(ctx context.Context, beginId int64, endId int
 		values = append(values, "("+strconv.FormatInt(i, 10)+", '2023-01-01 00:00:00')")
 	}
 
-	rowsSql := "INSERT INTO " + mysqlTableName + "(`id`, `heartbeat_time`) VALUES " + strings.Join(values, ",") + ";"
+	rowsSql := "INSERT INTO " + m.tableName + "(`id`, `heartbeat_time`) VALUES " + strings.Join(values, ",") + ";"
 
 	tx, err := _db.Begin()
 	if err != nil {
@@ -92,7 +93,7 @@ func (m *MySqlDb) InitTableWorkers(ctx context.Context, beginId int64, endId int
 		return err
 	}
 
-	_, err = tx.ExecContext(ctx, mysqlCreateTableSql)
+	_, err = tx.ExecContext(ctx, m.createTableSql)
 	if err != nil {
 		log.Error(ctx, err.Error(), err)
 		tx.Rollback()
@@ -112,7 +113,7 @@ func (m *MySqlDb) InitTableWorkers(ctx context.Context, beginId int64, endId int
 // GetBeforeWorker 找到该节点之前的worker
 func (m *MySqlDb) GetBeforeWorker(ctx context.Context, code string) (*model.RaindropWorker, error) {
 	var worker model.RaindropWorker
-	s := mysqlPreSelectSql + "AND `code` = ? ORDER BY `id` asc LIMIT 0,1 "
+	s := m.preSelectSql + "AND `code` = ? ORDER BY `id` asc LIMIT 0,1 "
 	err := _db.QueryRowContext(ctx, s, code).Scan(&worker.Id, &worker.Code,
 		&worker.TimeUnit, &worker.HeartbeatTime, &worker.CreateTime, &worker.UpdateTime, &worker.Version, &worker.DelFlag)
 	if err != nil {
@@ -129,7 +130,7 @@ func (m *MySqlDb) GetBeforeWorker(ctx context.Context, code string) (*model.Rain
 // QueryFreeWorkers 获取空闲的worker列表
 func (m *MySqlDb) QueryFreeWorkers(ctx context.Context, heartbeatTime time.Time) ([]model.RaindropWorker, error) {
 	workers := make([]model.RaindropWorker, 0)
-	s := mysqlPreSelectSql + "AND `heartbeat_time` < ? ORDER BY `heartbeat_time` ASC "
+	s := m.preSelectSql + " AND `heartbeat_time` < ? ORDER BY `heartbeat_time` ASC "
 	rows, err := _db.QueryContext(ctx, s, heartbeatTime)
 	if err != nil {
 		log.Error(ctx, "query workers fail", err)
@@ -151,7 +152,7 @@ func (m *MySqlDb) QueryFreeWorkers(ctx context.Context, heartbeatTime time.Time)
 
 // ActivateWorker 激活启用worker
 func (m *MySqlDb) ActivateWorker(ctx context.Context, id int64, code string, timeUnit int, version int64) (*model.RaindropWorker, error) {
-	sql := "UPDATE `" + mysqlTableName + "` SET `code` = ?, `time_unit` = ?, `version` = `version` + 1, `heartbeat_time` = ? WHERE `id` = ? AND `version` = ? "
+	sql := "UPDATE `" + m.tableName + "` SET `code` = ?, `time_unit` = ?, `version` = `version` + 1, `heartbeat_time` = ? WHERE `id` = ? AND `version` = ? "
 
 	result, err := _db.ExecContext(ctx, sql, code, timeUnit, time.Now(), id, version)
 	if err != nil {
@@ -188,7 +189,7 @@ func (m *MySqlDb) ActivateWorker(ctx context.Context, id int64, code string, tim
 
 // HeartbeatWorker 心跳
 func (m *MySqlDb) HeartbeatWorker(ctx context.Context, worker *model.RaindropWorker) (*model.RaindropWorker, error) {
-	sql := "UPDATE `" + mysqlTableName + "` SET `version` = `version` + 1, `heartbeat_time` = ? WHERE `id` = ? AND `version` = ? "
+	sql := "UPDATE `" + m.tableName + "` SET `version` = `version` + 1, `heartbeat_time` = ? WHERE `id` = ? AND `version` = ? "
 
 	result, err := _db.ExecContext(ctx, sql, time.Now(), worker.Id, worker.Version)
 	if err != nil {
@@ -213,7 +214,7 @@ func (m *MySqlDb) HeartbeatWorker(ctx context.Context, worker *model.RaindropWor
 
 // GetWorkerById 根据id获取worker
 func (m *MySqlDb) GetWorkerById(ctx context.Context, id int64) (*model.RaindropWorker, error) {
-	s := mysqlPreSelectSql + " AND `id` = ? "
+	s := m.preSelectSql + " AND `id` = ? "
 	var worker model.RaindropWorker
 
 	err := _db.QueryRowContext(ctx, s, id).Scan(&worker.Id, &worker.Code, &worker.TimeUnit, &worker.HeartbeatTime,

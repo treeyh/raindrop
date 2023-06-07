@@ -146,6 +146,7 @@
 - `DbConfig`: 数据库配置，必填；
     - `DbType`: 数据库类型，`mysql`、`postgresql`，目前仅支持 `mysql`；
     - `DbUrl`: 数据库连接，格式: `{user}:{password}@({host}:{port})/{dbName}?charset=utf8mb4&parseTime=True&loc={Asia%2FShanghai}`；
+    - `TableName`: 自定义工作节点表名，默认为:`soc_raindrop_worker`；
 - `Logger`: 日志，非必填；
 - `ServicePort`: 服务监听端口，非必填；
 - `PriorityEqualCodeWorkId`: 优先相同 code 的 workerId(毫秒，秒单位场景下生效)，默认: `false`。code 格式为: `{内网 ip}:{ServicePort}#{Mac 地址}`;

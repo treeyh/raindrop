@@ -17,6 +17,8 @@ var (
 	_db *sql.DB
 
 	log logger.ILogger
+
+	tableName = "soc_raindrop_worker"
 )
 
 type IDb interface {
@@ -49,6 +51,10 @@ type IDb interface {
 func InitMySqlDb(ctx context.Context, dbConfig config.RainDropDbConfig, l logger.ILogger) error {
 	log = l
 
+	if dbConfig.TableName != "" {
+		tableName = dbConfig.TableName
+	}
+
 	var err error
 	_db, err = sql.Open(dbConfig.DbType, dbConfig.DbUrl)
 	if err != nil {
@@ -66,6 +72,7 @@ func InitMySqlDb(ctx context.Context, dbConfig config.RainDropDbConfig, l logger
 	}
 
 	Db = &MySqlDb{}
+	Db.InitSql(tableName)
 	return nil
 }
 
