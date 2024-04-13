@@ -3,16 +3,18 @@ package config
 import (
 	"context"
 	"errors"
-	"github.com/treeyh/raindrop/consts"
-	"github.com/treeyh/raindrop/logger"
 	"strings"
 	"time"
+
+	"github.com/treeyh/raindrop/consts"
+	"github.com/treeyh/raindrop/logger"
 )
 
 type RainDropDbConfig struct {
 	// DbType 数据库类型，mysql、postgresql
 	DbType string `json:"dbType"`
 
+	// postgres://username:password@localhost:5432/database_name
 	// 数据库连接，{user}:{password}@({host}:{port})/{dbName}?charset=utf8mb4&parseTime=True&loc={Asia%2FShanghai}
 	DbUrl string `json:"dbUrl"`
 

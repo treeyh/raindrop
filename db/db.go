@@ -3,17 +3,18 @@ package db
 import (
 	"context"
 	"database/sql"
+	"time"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/treeyh/raindrop/config"
 	"github.com/treeyh/raindrop/consts"
 	"github.com/treeyh/raindrop/logger"
 	"github.com/treeyh/raindrop/model"
-	"time"
 )
 
 var (
-	//Db      *IDb
-	Db  *MySqlDb
+	Db IDb
+	// Db  *MySqlDb
 	_db *sql.DB
 
 	log logger.ILogger
@@ -22,6 +23,9 @@ var (
 )
 
 type IDb interface {
+	// InitSql 初始化
+	InitSql(tableName string)
+
 	// GetNowTime 获取数据库当前时间
 	GetNowTime(ctx context.Context) (time.Time, error)
 
@@ -72,6 +76,35 @@ func InitMySqlDb(ctx context.Context, dbConfig config.RainDropDbConfig, l logger
 	}
 
 	Db = &MySqlDb{}
+	Db.InitSql(tableName)
+	return nil
+}
+
+// InitPostgreSqlDb 初始化PostgreSql
+func InitPostgreSqlDb(ctx context.Context, dbConfig config.RainDropDbConfig, l logger.ILogger) error {
+	log = l
+
+	if dbConfig.TableName != "" {
+		tableName = dbConfig.TableName
+	}
+
+	var err error
+	_db, err = sql.Open(dbConfig.DbType, dbConfig.DbUrl)
+	if err != nil {
+		log.Error(ctx, consts.ErrMsgDatabaseInitFail.Error(), err)
+		return err
+	}
+
+	_db.SetMaxOpenConns(consts.DbMaxOpenConns)
+	_db.SetMaxIdleConns(consts.DbMaxIdleConns)
+
+	err = _db.Ping()
+	if err != nil {
+		log.Error(ctx, consts.ErrMsgDatabaseInitFail.Error(), err)
+		return err
+	}
+
+	Db = &PostgreSqlDb{}
 	Db.InitSql(tableName)
 	return nil
 }
