@@ -14,7 +14,9 @@ import (
 
 var (
 	Db IDb
+
 	// Db  *MySqlDb
+
 	_db *sql.DB
 
 	log logger.ILogger
