@@ -23,7 +23,7 @@ func TestSimpleNewId(t *testing.T) {
 	//conf := getTestSimpleMillisecondConfig()
 	conf := getTestSecondConfig()
 
-	dropTestWorkerTable(ctx)
+	dropTestWorkerTable(ctx, conf.DbConfig.DbType)
 
 	raindrop.Init(ctx, conf)
 	if worker.GetWorkerId(ctx) != minWorkerId {
@@ -45,7 +45,7 @@ func TestBenchmarkNewId(t *testing.T) {
 	//conf := getTestSimpleMillisecondConfig()
 	conf := getTestSecondConfig()
 
-	dropTestWorkerTable(ctx)
+	dropTestWorkerTable(ctx, conf.DbConfig.DbType)
 
 	raindrop.Init(ctx, conf)
 	if worker.GetWorkerId(ctx) != minWorkerId {
@@ -67,7 +67,7 @@ func TestSimpleLongTimeNewId(t *testing.T) {
 	//conf := getTestSimpleMillisecondConfig()
 	conf := getTestSecondConfig()
 
-	dropTestWorkerTable(ctx)
+	dropTestWorkerTable(ctx, conf.DbConfig.DbType)
 
 	raindrop.Init(ctx, conf)
 	if worker.GetWorkerId(ctx) != minWorkerId {

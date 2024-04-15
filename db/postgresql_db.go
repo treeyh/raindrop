@@ -30,7 +30,7 @@ func (m *PostgreSqlDb) InitSql(tableName string) {
 		"\t\"create_time\"          TIMESTAMP WITH TIME ZONE not null default CURRENT_TIMESTAMP,\n" +
 		"\t\"update_time\"          TIMESTAMP WITH TIME ZONE not null default CURRENT_TIMESTAMP,\n" +
 		"\t\"version\"              bigint               not null default '1',\n" +
-		"\t\"del_flag\"             bool                 not null default false,\n" +
+		"\t\"del_flag\"             smallint                 not null default '2',\n" +
 		"\tconstraint \"PK_SOC_RAINDROP_WORKER\" primary key (\"id\")\n" +
 		"\t);\n" +
 		"\tCREATE INDEX \"idx_soc_raindrop_worker_hb_time\" on \"soc_raindrop_worker\" (\n" +
@@ -44,7 +44,7 @@ func (m *PostgreSqlDb) InitSql(tableName string) {
 // GetNowTime 获取数据库当前时间
 func (m *PostgreSqlDb) GetNowTime(ctx context.Context) (time.Time, error) {
 	var now time.Time
-	err := _db.QueryRowContext(ctx, "SELECT NOW() as now;").Scan(&now)
+	err := _pgDbPool.QueryRow(ctx, "SELECT NOW() as now;").Scan(&now)
 
 	if err != nil {
 		log.Error(ctx, consts.ErrMsgDatabaseGetNowTimeFail.Error(), err)
@@ -55,7 +55,11 @@ func (m *PostgreSqlDb) GetNowTime(ctx context.Context) (time.Time, error) {
 
 func (m *PostgreSqlDb) getDatabaseName(ctx context.Context) string {
 	var dbName string
-	_db.QueryRowContext(ctx, "SELECT current_database();").Scan(&dbName)
+	err := _pgDbPool.QueryRow(ctx, "SELECT current_database();").Scan(&dbName)
+	if err != nil {
+		log.Error(ctx, consts.ErrMsgDatabaseInitFail.Error(), err)
+		return dbName
+	}
 	return dbName
 }
 
@@ -64,7 +68,8 @@ func (m *PostgreSqlDb) ExistTable(ctx context.Context) (bool, error) {
 	// dbName := m.getDatabaseName(ctx)
 
 	var count int
-	err := _db.QueryRowContext(ctx, "select count(*) from \"pg_tables\" where \"tablename\" = ?;", m.tableName).Scan(&count)
+	_sql := "select count(*) from \"pg_tables\" where \"tablename\" = $1"
+	err := _pgDbPool.QueryRow(ctx, _sql, m.tableName).Scan(&count)
 
 	if err != nil {
 		log.Error(ctx, err.Error(), err)
@@ -90,37 +95,37 @@ func (m *PostgreSqlDb) InitTableWorkers(ctx context.Context, beginId int64, endI
 
 	rowsSql := "INSERT INTO \"" + m.tableName + "\"(\"id\", \"heartbeat_time\") VALUES " + strings.Join(values, ",") + ";"
 
-	tx, err := _db.Begin()
+	tx, err := _pgDbPool.Begin(ctx)
 	if err != nil {
 		log.Error(ctx, err.Error(), err)
 		if tx != nil {
-			tx.Rollback()
+			tx.Rollback(ctx)
 		}
 		return err
 	}
 
-	_, err = tx.ExecContext(ctx, m.createTableSql)
+	_, err = tx.Exec(ctx, m.createTableSql)
 	if err != nil {
 		log.Error(ctx, err.Error(), err)
-		tx.Rollback()
+		tx.Rollback(ctx)
 		return err
 	}
 
-	_, err = tx.ExecContext(ctx, rowsSql)
+	_, err = tx.Exec(ctx, rowsSql)
 	if err != nil {
 		log.Error(ctx, err.Error(), err)
-		tx.Rollback()
+		tx.Rollback(ctx)
 		return err
 	}
-	err = tx.Commit()
+	err = tx.Commit(ctx)
 	return err
 }
 
 // GetBeforeWorker 找到该节点之前的worker
 func (m *PostgreSqlDb) GetBeforeWorker(ctx context.Context, code string) (*model.RaindropWorker, error) {
 	var worker model.RaindropWorker
-	s := m.preSelectSql + "AND \"code\" = ? ORDER BY \"id\" asc LIMIT 1 ;"
-	err := _db.QueryRowContext(ctx, s, code).Scan(&worker.Id, &worker.Code,
+	s := m.preSelectSql + "AND \"code\" = $1 ORDER BY \"id\" asc LIMIT 1 ;"
+	err := _pgDbPool.QueryRow(ctx, s, code).Scan(&worker.Id, &worker.Code,
 		&worker.TimeUnit, &worker.HeartbeatTime, &worker.CreateTime, &worker.UpdateTime, &worker.Version, &worker.DelFlag)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -136,8 +141,8 @@ func (m *PostgreSqlDb) GetBeforeWorker(ctx context.Context, code string) (*model
 // QueryFreeWorkers 获取空闲的worker列表
 func (m *PostgreSqlDb) QueryFreeWorkers(ctx context.Context, heartbeatTime time.Time) ([]model.RaindropWorker, error) {
 	workers := make([]model.RaindropWorker, 0)
-	s := m.preSelectSql + " AND \"heartbeat_time\" < ? ORDER BY \"heartbeat_time\" ASC ;"
-	rows, err := _db.QueryContext(ctx, s, heartbeatTime)
+	s := m.preSelectSql + " AND \"heartbeat_time\" < $1 ORDER BY \"heartbeat_time\" ASC ;"
+	rows, err := _pgDbPool.Query(ctx, s, heartbeatTime)
 	if err != nil {
 		log.Error(ctx, "query workers fail", err)
 		return nil, err
@@ -158,18 +163,15 @@ func (m *PostgreSqlDb) QueryFreeWorkers(ctx context.Context, heartbeatTime time.
 
 // ActivateWorker 激活启用worker
 func (m *PostgreSqlDb) ActivateWorker(ctx context.Context, id int64, code string, timeUnit int, version int64) (*model.RaindropWorker, error) {
-	sql := "UPDATE \"" + m.tableName + "\" SET \"code\" = ?, \"time_unit\" = ?, \"version\" = \"version\" + 1, \"heartbeat_time\" = ? WHERE \"id\" = ? AND \"version\" = ? "
+	sql := "UPDATE \"" + m.tableName + "\" SET \"code\" = $1, \"time_unit\" = $2, \"version\" = \"version\" + 1, \"heartbeat_time\" = $3 WHERE \"id\" = $4 AND \"version\" = $5 "
 
-	result, err := _db.ExecContext(ctx, sql, code, timeUnit, time.Now(), id, version)
+	result, err := _pgDbPool.Exec(ctx, sql, code, timeUnit, time.Now(), id, version)
 	if err != nil {
 		log.Error(ctx, "heartbeat worker fail!!!", err)
 		return nil, err
 	}
-	count, err := result.RowsAffected()
-	if err != nil {
-		log.Error(ctx, "heartbeat worker fail!!!", err)
-		return nil, err
-	}
+	count := result.RowsAffected()
+
 	if count != 1 {
 		log.Error(ctx, "heartbeat worker fail!!! count: "+strconv.FormatInt(count, 10))
 		return nil, err
@@ -195,16 +197,13 @@ func (m *PostgreSqlDb) ActivateWorker(ctx context.Context, id int64, code string
 
 // HeartbeatWorker 心跳
 func (m *PostgreSqlDb) HeartbeatWorker(ctx context.Context, worker *model.RaindropWorker) (*model.RaindropWorker, error) {
-	sql := "UPDATE \"" + m.tableName + "\" SET \"version\" = \"version\" + 1, \"heartbeat_time\" = ? WHERE \"id\" = ? AND \"version\" = ? "
+	sql := "UPDATE \"" + m.tableName + "\" SET \"version\" = \"version\" + 1, \"heartbeat_time\" = $1 WHERE \"id\" = $2 AND \"version\" = $3 "
 
-	result, err := _db.ExecContext(ctx, sql, time.Now(), worker.Id, worker.Version)
+	result, err := _pgDbPool.Exec(ctx, sql, time.Now(), worker.Id, worker.Version)
 	if err != nil {
 		log.Error(ctx, "heartbeat worker fail!!!", err)
 	}
-	count, err := result.RowsAffected()
-	if err != nil {
-		log.Error(ctx, "heartbeat worker fail!!!", err)
-	}
+	count := result.RowsAffected()
 	if count != 1 {
 		log.Error(ctx, "heartbeat worker fail!!! id:"+strconv.FormatInt(worker.Id, 10)+" result: "+strconv.FormatInt(count, 10))
 	}
@@ -220,10 +219,10 @@ func (m *PostgreSqlDb) HeartbeatWorker(ctx context.Context, worker *model.Raindr
 
 // GetWorkerById 根据id获取worker
 func (m *PostgreSqlDb) GetWorkerById(ctx context.Context, id int64) (*model.RaindropWorker, error) {
-	s := m.preSelectSql + " AND \"id\" = ? "
+	s := m.preSelectSql + " AND \"id\" = $1 "
 	var worker model.RaindropWorker
 
-	err := _db.QueryRowContext(ctx, s, id).Scan(&worker.Id, &worker.Code, &worker.TimeUnit, &worker.HeartbeatTime,
+	err := _pgDbPool.QueryRow(ctx, s, id).Scan(&worker.Id, &worker.Code, &worker.TimeUnit, &worker.HeartbeatTime,
 		&worker.CreateTime, &worker.UpdateTime, &worker.Version, &worker.DelFlag)
 
 	if err != nil {

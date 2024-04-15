@@ -12,7 +12,7 @@ import (
 func TestMySqlDb_GetNowTime(t *testing.T) {
 	ctx := getTestContext()
 	l := logger.NewDefault()
-	db.InitMySqlDb(ctx, getTestMySqlConfig(), l)
+	db.InitMySqlDb(ctx, getTestConfig(), l)
 
 	now, err := db.Db.GetNowTime(ctx)
 

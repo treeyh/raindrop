@@ -14,7 +14,7 @@ func TestGetDefaultWorkerId(t *testing.T) {
 	ctx := getTestSkipHeartbeatContext()
 	conf := getTestMillisecondConfig()
 
-	dropTestWorkerTable(ctx)
+	dropTestWorkerTable(ctx, conf.DbConfig.DbType)
 
 	raindrop.Init(ctx, conf)
 	t.Log(worker.GetWorkerId(ctx))
@@ -30,7 +30,7 @@ func TestWorkerHeartbeat(t *testing.T) {
 	ctx := getTestContext()
 	conf := getTestMillisecondConfig()
 
-	dropTestWorkerTable(ctx)
+	dropTestWorkerTable(ctx, conf.DbConfig.DbType)
 
 	raindrop.Init(ctx, conf)
 	t.Log(worker.GetWorkerId(ctx))
@@ -84,7 +84,7 @@ func TestMultipleGetWorkerIdDiffServicePort1(t *testing.T) {
 	ctx := getTestSkipHeartbeatContext()
 	conf := getTestMillisecondConfig()
 
-	dropTestWorkerTable(ctx)
+	dropTestWorkerTable(ctx, conf.DbConfig.DbType)
 
 	raindrop.Init(ctx, conf)
 
@@ -129,7 +129,7 @@ func TestMultipleGetWorkerIdSameServicePort1(t *testing.T) {
 	ctx := getTestSkipHeartbeatContext()
 	conf := getTestMillisecondConfig()
 
-	dropTestWorkerTable(ctx)
+	dropTestWorkerTable(ctx, conf.DbConfig.DbType)
 
 	raindrop.Init(ctx, conf)
 
@@ -172,7 +172,7 @@ func TestMultipleGetWorkerIdCountOverflow(t *testing.T) {
 	ctx := getTestSkipHeartbeatContext()
 	conf := getTestMillisecondConfig()
 
-	dropTestWorkerTable(ctx)
+	dropTestWorkerTable(ctx, conf.DbConfig.DbType)
 
 	wIdMap := make(map[int64]bool)
 	for i := conf.ServiceMinWorkId; i <= conf.ServiceMaxWorkId; i++ {

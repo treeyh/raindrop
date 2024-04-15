@@ -74,9 +74,10 @@ func initDb(ctx context.Context, conf config.RainDropConfig) error {
 	var err error
 	if consts.DbTypeMySql == conf.DbConfig.DbType {
 		err = db.InitMySqlDb(ctx, conf.DbConfig, log)
+	} else if consts.DbTypePostgreSQL == conf.DbConfig.DbType {
+		err = db.InitPostgreSqlDb(ctx, conf.DbConfig, log)
 	} else {
-		log.Fatal(ctx, "raindrop not support ["+conf.DbConfig.DbType+"] db type.")
-		err = consts.ErrMsgDatabaseInitFail
+		err = db.InitPostgreSqlDb(ctx, conf.DbConfig, log)
 	}
 	if err != nil {
 		log.Error(ctx, err.Error(), err)

@@ -20,7 +20,7 @@ func TestSimpleNewIdByCode(t *testing.T) {
 	ctx := getTestContext()
 	conf := getTestMinuteConfig()
 
-	dropTestWorkerTable(ctx)
+	dropTestWorkerTable(ctx, conf.DbConfig.DbType)
 
 	raindrop.Init(ctx, conf)
 	if worker.GetWorkerId(ctx) != minWorkerId {

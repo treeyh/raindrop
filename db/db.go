@@ -3,9 +3,10 @@ package db
 import (
 	"context"
 	"database/sql"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"time"
 
-	//_ "github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/treeyh/raindrop/config"
 	"github.com/treeyh/raindrop/consts"
 	"github.com/treeyh/raindrop/logger"
@@ -17,7 +18,9 @@ var (
 
 	// Db  *MySqlDb
 
-	_db *sql.DB
+	_mysqlDb *sql.DB
+
+	_pgDbPool *pgxpool.Pool
 
 	log logger.ILogger
 
@@ -62,16 +65,16 @@ func InitMySqlDb(ctx context.Context, dbConfig config.RainDropDbConfig, l logger
 	}
 
 	var err error
-	_db, err = sql.Open(dbConfig.DbType, dbConfig.DbUrl)
+	_mysqlDb, err = sql.Open(dbConfig.DbType, dbConfig.DbUrl)
 	if err != nil {
 		log.Error(ctx, consts.ErrMsgDatabaseInitFail.Error(), err)
 		return err
 	}
 
-	_db.SetMaxOpenConns(consts.DbMaxOpenConns)
-	_db.SetMaxIdleConns(consts.DbMaxIdleConns)
+	_mysqlDb.SetMaxOpenConns(consts.DbMaxOpenConns)
+	_mysqlDb.SetMaxIdleConns(consts.DbMaxIdleConns)
 
-	err = _db.Ping()
+	err = _mysqlDb.Ping()
 	if err != nil {
 		log.Error(ctx, consts.ErrMsgDatabaseInitFail.Error(), err)
 		return err
@@ -91,16 +94,14 @@ func InitPostgreSqlDb(ctx context.Context, dbConfig config.RainDropDbConfig, l l
 	}
 
 	var err error
-	_db, err = sql.Open(dbConfig.DbType, dbConfig.DbUrl)
+	dbUrl := "postgres://" + dbConfig.DbUrl
+	_pgDbPool, err = pgxpool.New(ctx, dbUrl)
 	if err != nil {
 		log.Error(ctx, consts.ErrMsgDatabaseInitFail.Error(), err)
 		return err
 	}
 
-	_db.SetMaxOpenConns(consts.DbMaxOpenConns)
-	_db.SetMaxIdleConns(consts.DbMaxIdleConns)
-
-	err = _db.Ping()
+	err = _pgDbPool.Ping(ctx)
 	if err != nil {
 		log.Error(ctx, consts.ErrMsgDatabaseInitFail.Error(), err)
 		return err

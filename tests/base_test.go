@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/treeyh/raindrop/config"
 	"github.com/treeyh/raindrop/consts"
 	"github.com/treeyh/raindrop/logger"
@@ -21,14 +22,22 @@ const (
 )
 
 var (
-	_dbConn *sql.DB
+	_mysqlDbConn *sql.DB
+
+	_pgDbPool *pgxpool.Pool
 
 	tableName = "soc_raindrop_worker"
 )
 
 func init() {
 	ctx := getTestContext()
-	initTestMySqlDb(ctx)
+
+	dbConfig := getTestConfig()
+	if consts.DbTypeMySql == dbConfig.DbType {
+		initTestMySqlDb(ctx)
+	} else {
+		initTestPostgreSqlDb(ctx)
+	}
 }
 
 func getTestSkipHeartbeatContext() context.Context {
@@ -41,11 +50,11 @@ func getTestContext() context.Context {
 	return ctx
 }
 
-func getTestMySqlConfig() config.RainDropDbConfig {
+func getTestConfig() config.RainDropDbConfig {
 
 	return config.RainDropDbConfig{
-		DbType:    "postgresql",
-		DbUrl:     "dev_account:9CrgLlsDN9QlitQFRNW9@(rm-uf6cl3tt9t814wv84.mysql.rds.aliyuncs.com)/test?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai",
+		DbType:    consts.DbTypePostgreSQL,
+		DbUrl:     "proot:4pVmsxTuB_5ZlnSX@127.0.0.1:5432/soc_expense_tracker_db",
 		TableName: tableName,
 	}
 
@@ -70,7 +79,7 @@ func getTestStdoutDebugLogger() logger.ILogger {
 func getTestSecondConfig() config.RainDropConfig {
 	return config.RainDropConfig{
 		IdMode:                  consts.IdModeSnowflake,
-		DbConfig:                getTestMySqlConfig(),
+		DbConfig:                getTestConfig(),
 		Logger:                  getTestStdoutLogger(),
 		ServicePort:             port,
 		TimeUnit:                consts.TimeUnitSecond,
@@ -89,7 +98,7 @@ func getTestSecondConfig() config.RainDropConfig {
 func getTestMinuteConfig() config.RainDropConfig {
 	return config.RainDropConfig{
 		IdMode:                  consts.IdModeSnowflake,
-		DbConfig:                getTestMySqlConfig(),
+		DbConfig:                getTestConfig(),
 		Logger:                  getTestStdoutLogger(),
 		ServicePort:             port,
 		TimeUnit:                consts.TimeUnitMinute,
@@ -108,7 +117,7 @@ func getTestMinuteConfig() config.RainDropConfig {
 func getTestSimpleMillisecondConfig() config.RainDropConfig {
 	return config.RainDropConfig{
 		IdMode:                  consts.IdModeSnowflake,
-		DbConfig:                getTestMySqlConfig(),
+		DbConfig:                getTestConfig(),
 		Logger:                  getTestStdoutDebugLogger(),
 		ServicePort:             port,
 		TimeUnit:                consts.TimeUnitMillisecond,
@@ -127,7 +136,7 @@ func getTestSimpleMillisecondConfig() config.RainDropConfig {
 func getTestMillisecondConfig() config.RainDropConfig {
 	return config.RainDropConfig{
 		IdMode:                  consts.IdModeSnowflake,
-		DbConfig:                getTestMySqlConfig(),
+		DbConfig:                getTestConfig(),
 		Logger:                  getTestStdoutLogger(),
 		ServicePort:             port,
 		TimeUnit:                consts.TimeUnitMillisecond,
@@ -145,17 +154,34 @@ func getTestMillisecondConfig() config.RainDropConfig {
 
 // initTestMySqlDb 初始化MySql
 func initTestMySqlDb(ctx context.Context) error {
-	dbConfig := getTestMySqlConfig()
+	dbConfig := getTestConfig()
 	var err error
-	_dbConn, err = sql.Open(dbConfig.DbType, dbConfig.DbUrl)
+	_mysqlDbConn, err = sql.Open(dbConfig.DbType, dbConfig.DbUrl)
 	if err != nil {
 		return err
 	}
 
-	_dbConn.SetMaxOpenConns(consts.DbMaxOpenConns)
-	_dbConn.SetMaxIdleConns(consts.DbMaxIdleConns)
+	_mysqlDbConn.SetMaxOpenConns(consts.DbMaxOpenConns)
+	_mysqlDbConn.SetMaxIdleConns(consts.DbMaxIdleConns)
 
-	err = _dbConn.Ping()
+	err = _mysqlDbConn.Ping()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// initTestPostgreSqlDb 初始化PostgreSql
+func initTestPostgreSqlDb(ctx context.Context) error {
+	dbConfig := getTestConfig()
+	var err error
+	dbUrl := "postgres://" + dbConfig.DbUrl
+	_pgDbPool, err = pgxpool.New(ctx, dbUrl)
+	if err != nil {
+		return err
+	}
+
+	err = _pgDbPool.Ping(ctx)
 	if err != nil {
 		return err
 	}
@@ -163,15 +189,23 @@ func initTestMySqlDb(ctx context.Context) error {
 }
 
 // dropTestWorkerTable 删除表
-func dropTestWorkerTable(ctx context.Context) error {
+func dropTestWorkerTable(ctx context.Context, dbType string) error {
+
 	s := "DROP TABLE " + tableName + ";"
-	_, err := _dbConn.ExecContext(ctx, s)
-	return err
+
+	if dbType == consts.DbTypeMySql {
+		_, err := _mysqlDbConn.ExecContext(ctx, s)
+		return err
+	} else {
+		_, err := _pgDbPool.Exec(ctx, s)
+		return err
+	}
+
 }
 
 // updateWorker 更新 Worker
 func updateWorker(ctx context.Context, id int64, code string, timeUnit int, heartbeatTime time.Time) error {
 	s := "UPDATE " + tableName + " SET code = ?, time_unit = ?, heartbeat_time = ? WHERE id = ? "
-	_, err := _dbConn.ExecContext(ctx, s)
+	_, err := _mysqlDbConn.ExecContext(ctx, s)
 	return err
 }
