@@ -2,6 +2,7 @@ package tests
 
 import (
 	"github.com/stretchr/testify/assert"
+	"github.com/treeyh/raindrop"
 	"github.com/treeyh/raindrop/db"
 	"github.com/treeyh/raindrop/logger"
 	"testing"
@@ -23,7 +24,10 @@ func TestMySqlDb_GetNowTime(t *testing.T) {
 func TestMySqlDb_QueryFreeWorkers(t *testing.T) {
 
 	ctx := getTestContext()
-	db.InitMySqlDb(ctx, getTestMySqlConfig(), logger.NewDefault())
+
+	conf := getTestSecondConfig()
+
+	raindrop.Init(ctx, conf)
 
 	workers, err := db.Db.QueryFreeWorkers(ctx, time.Now())
 	assert.NoError(t, err)

@@ -42,12 +42,19 @@ func getTestContext() context.Context {
 }
 
 func getTestMySqlConfig() config.RainDropDbConfig {
+
 	return config.RainDropDbConfig{
-		DbType:    "mysql",
-		DbUrl:     "root:mysqlpw@(172.25.100.40:3306)/raindrop_db?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai",
+		DbType:    "postgresql",
+		DbUrl:     "dev_account:9CrgLlsDN9QlitQFRNW9@(rm-uf6cl3tt9t814wv84.mysql.rds.aliyuncs.com)/test?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai",
 		TableName: tableName,
-		//DbUrl: "root:7Dv_v2VxnZ8PgG26f@(192.168.0.134:3306)/raindrop_db?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai",
 	}
+
+	//return config.RainDropDbConfig{
+	//	DbType: "mysql",
+	//	//DbUrl:     "root:mysqlpw@(172.25.100.40:3306)/test?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai",
+	//	TableName: tableName,
+	//	DbUrl:     "dev_account:9CrgLlsDN9QlitQFRNW9@(rm-uf6cl3tt9t814wv84.mysql.rds.aliyuncs.com)/test?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai",
+	//}
 }
 
 func getTestStdoutLogger() logger.ILogger {
