@@ -222,36 +222,36 @@ func checkWorkIdConfig(ctx context.Context, conf *RainDropConfig) error {
 
 	switch conf.WorkIdLength {
 	case 3:
-		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 7 {
-			return errors.New("When WorkIdLength is 3, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 7")
+		if conf.ServiceMinWorkId < 0 || conf.ServiceMaxWorkId > 7 {
+			return errors.New("When WorkIdLength is 3, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 0 to 7")
 		}
 	case 4:
-		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 15 {
-			return errors.New("When WorkIdLength is 4, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 15")
+		if conf.ServiceMinWorkId < 0 || conf.ServiceMaxWorkId > 15 {
+			return errors.New("When WorkIdLength is 4, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 0 to 15")
 		}
 	case 5:
-		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 31 {
-			return errors.New("When WorkIdLength is 5, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 31")
+		if conf.ServiceMinWorkId < 0 || conf.ServiceMaxWorkId > 31 {
+			return errors.New("When WorkIdLength is 5, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 0 to 31")
 		}
 	case 6:
-		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 63 {
-			return errors.New("When WorkIdLength is 6, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 63")
+		if conf.ServiceMinWorkId < 0 || conf.ServiceMaxWorkId > 63 {
+			return errors.New("When WorkIdLength is 6, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 0 to 63")
 		}
 	case 7:
-		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 127 {
-			return errors.New("When WorkIdLength is 7, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 127")
+		if conf.ServiceMinWorkId < 0 || conf.ServiceMaxWorkId > 127 {
+			return errors.New("When WorkIdLength is 7, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 0 to 127")
 		}
 	case 8:
-		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 255 {
-			return errors.New("When WorkIdLength is 8, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 255")
+		if conf.ServiceMinWorkId < 0 || conf.ServiceMaxWorkId > 255 {
+			return errors.New("When WorkIdLength is 8, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 0 to 255")
 		}
 	case 9:
-		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 511 {
-			return errors.New("When WorkIdLength is 9, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 511")
+		if conf.ServiceMinWorkId < 0 || conf.ServiceMaxWorkId > 511 {
+			return errors.New("When WorkIdLength is 9, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 0 to 511")
 		}
 	case 10:
-		if conf.ServiceMinWorkId < 1 || conf.ServiceMaxWorkId > 1023 {
-			return errors.New("When WorkIdLength is 10, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 1 to 1023")
+		if conf.ServiceMinWorkId < 0 || conf.ServiceMaxWorkId > 1023 {
+			return errors.New("When WorkIdLength is 10, ServiceMinWorkId and ServiceMaxWorkId take values in the range of 0 to 1023")
 		}
 	}
 	return nil
