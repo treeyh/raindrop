@@ -94,8 +94,7 @@ func InitPostgreSqlDb(ctx context.Context, dbConfig config.RainDropDbConfig, l l
 	}
 
 	var err error
-	dbUrl := "postgres://" + dbConfig.DbUrl
-	_pgDbPool, err = pgxpool.New(ctx, dbUrl)
+	_pgDbPool, err = pgxpool.New(ctx, dbConfig.DbUrl)
 	if err != nil {
 		log.Error(ctx, consts.ErrMsgDatabaseInitFail.Error(), err)
 		return err

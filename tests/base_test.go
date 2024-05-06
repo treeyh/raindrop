@@ -54,7 +54,7 @@ func getTestConfig() config.RainDropDbConfig {
 
 	return config.RainDropDbConfig{
 		DbType:    consts.DbTypePostgreSQL,
-		DbUrl:     "proot:4pVmsxTuB_5ZlnSX@127.0.0.1:5432/soc_expense_tracker_db",
+		DbUrl:     "postgres://proot:4pVmsxTuB_5ZlnSX@127.0.0.1:5432/soc_expense_tracker_db",
 		TableName: tableName,
 	}
 
@@ -175,7 +175,7 @@ func initTestMySqlDb(ctx context.Context) error {
 func initTestPostgreSqlDb(ctx context.Context) error {
 	dbConfig := getTestConfig()
 	var err error
-	dbUrl := "postgres://" + dbConfig.DbUrl
+	dbUrl := dbConfig.DbUrl
 	_pgDbPool, err = pgxpool.New(ctx, dbUrl)
 	if err != nil {
 		return err
