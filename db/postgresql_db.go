@@ -47,7 +47,7 @@ func (m *PostgreSqlDb) GetNowTime(ctx context.Context) (time.Time, error) {
 	err := _pgDbPool.QueryRow(ctx, "SELECT NOW() as now;").Scan(&now)
 
 	if err != nil {
-		log.Error(ctx, consts.ErrMsgDatabaseGetNowTimeFail.Error(), err)
+		log.Error(ctx, consts.ErrMsgDatabaseGetNowTimeFail.Error()+": "+err.Error(), err)
 		return time.Now(), err
 	}
 	return now, err
@@ -57,7 +57,7 @@ func (m *PostgreSqlDb) getDatabaseName(ctx context.Context) string {
 	var dbName string
 	err := _pgDbPool.QueryRow(ctx, "SELECT current_database();").Scan(&dbName)
 	if err != nil {
-		log.Error(ctx, consts.ErrMsgDatabaseInitFail.Error(), err)
+		log.Error(ctx, consts.ErrMsgDatabaseInitFail.Error()+": "+err.Error(), err)
 		return dbName
 	}
 	return dbName
@@ -131,7 +131,7 @@ func (m *PostgreSqlDb) GetBeforeWorker(ctx context.Context, code string) (*model
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
-		log.Error(ctx, "find before worker fail", err)
+		log.Error(ctx, "find before worker fail: "+err.Error(), err)
 		return nil, err
 	}
 
@@ -144,14 +144,14 @@ func (m *PostgreSqlDb) QueryFreeWorkers(ctx context.Context, heartbeatTime time.
 	s := m.preSelectSql + " AND \"heartbeat_time\" < $1 ORDER BY \"heartbeat_time\" ASC ;"
 	rows, err := _pgDbPool.Query(ctx, s, heartbeatTime)
 	if err != nil {
-		log.Error(ctx, "query workers fail", err)
+		log.Error(ctx, "query workers fail: "+err.Error(), err)
 		return nil, err
 	}
 	for rows.Next() {
 		var worker model.RaindropWorker
 		e := rows.Scan(&worker.Id, &worker.Code, &worker.TimeUnit, &worker.HeartbeatTime, &worker.CreateTime, &worker.UpdateTime, &worker.Version, &worker.DelFlag)
 		if e != nil {
-			log.Error(ctx, "query workers fail", e)
+			log.Error(ctx, "query workers fail: "+err.Error(), e)
 			return nil, e
 		}
 		workers = append(workers, worker)
@@ -167,7 +167,7 @@ func (m *PostgreSqlDb) ActivateWorker(ctx context.Context, id int64, code string
 
 	result, err := _pgDbPool.Exec(ctx, sql, code, timeUnit, time.Now(), id, version)
 	if err != nil {
-		log.Error(ctx, "heartbeat worker fail!!!", err)
+		log.Error(ctx, "heartbeat worker fail!!!: "+err.Error(), err)
 		return nil, err
 	}
 	count := result.RowsAffected()
@@ -201,7 +201,7 @@ func (m *PostgreSqlDb) HeartbeatWorker(ctx context.Context, worker *model.Raindr
 
 	result, err := _pgDbPool.Exec(ctx, sql, time.Now(), worker.Id, worker.Version)
 	if err != nil {
-		log.Error(ctx, "heartbeat worker fail!!!", err)
+		log.Error(ctx, "heartbeat worker fail!!!: "+err.Error(), err)
 	}
 	count := result.RowsAffected()
 	if count != 1 {
@@ -226,7 +226,7 @@ func (m *PostgreSqlDb) GetWorkerById(ctx context.Context, id int64) (*model.Rain
 		&worker.CreateTime, &worker.UpdateTime, &worker.Version, &worker.DelFlag)
 
 	if err != nil {
-		log.Error(ctx, "get worker by id fail. id: "+strconv.FormatInt(id, 10), err)
+		log.Error(ctx, "get worker by id fail. id: "+strconv.FormatInt(id, 10)+" error: "+err.Error(), err)
 		return nil, err
 	}
 

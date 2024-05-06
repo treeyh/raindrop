@@ -165,7 +165,7 @@ func activateWorker(ctx context.Context, conf config.RainDropConfig) (*model.Rai
 
 	ip, err := utils.GetLocalIP()
 	if err != nil {
-		log.Error(ctx, "get local ip fail", err)
+		log.Error(ctx, "get local ip fail: "+err.Error(), err)
 		return nil, err
 	}
 	timeUnit = conf.TimeUnit

@@ -12,7 +12,7 @@ func TestFileWithLineNum(t *testing.T) {
 func TestGetLocalIP(t *testing.T) {
 	ip, err := GetLocalIP()
 	if err != nil {
-		t.Fatal("get local ip fail.", err)
+		t.Fatal("get local ip fail: "+err.Error(), err)
 	}
 	t.Log(ip)
 }

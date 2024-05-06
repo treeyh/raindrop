@@ -23,18 +23,18 @@ func Init(ctx context.Context, conf config.RainDropConfig) {
 
 	err := config.CheckConfig(ctx, &conf)
 	if err != nil {
-		log.Fatal(ctx, "config check fail", err)
+		log.Fatal(ctx, "config check fail: "+err.Error(), err)
 	}
 	log.Debug(ctx, "check config over.")
 	err = initDb(ctx, conf)
 	if err != nil {
-		log.Fatal(ctx, "init db fail", err)
+		log.Fatal(ctx, "init db fail: "+err.Error(), err)
 	}
 
 	log.Debug(ctx, "init db over.")
 	err = initRaindrop(ctx, conf)
 	if err != nil {
-		log.Fatal(ctx, "init raindrop fail", err)
+		log.Fatal(ctx, "init raindrop fail: "+err.Error(), err)
 	}
 }
 
@@ -112,7 +112,7 @@ func checkDbTimeInterval(ctx context.Context) error {
 	dbNow, err := db.Db.GetNowTime(ctx)
 
 	if err != nil {
-		log.Error(ctx, "get database now time fail", err)
+		log.Error(ctx, "get database now time fail: "+err.Error(), err)
 		return err
 	}
 

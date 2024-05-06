@@ -121,7 +121,7 @@ func (m *MySqlDb) GetBeforeWorker(ctx context.Context, code string) (*model.Rain
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
-		log.Error(ctx, "find before worker fail", err)
+		log.Error(ctx, "find before worker fail: "+err.Error(), err)
 		return nil, err
 	}
 
@@ -134,14 +134,14 @@ func (m *MySqlDb) QueryFreeWorkers(ctx context.Context, heartbeatTime time.Time)
 	s := m.preSelectSql + " AND `heartbeat_time` < ? ORDER BY `heartbeat_time` ASC "
 	rows, err := _mysqlDb.QueryContext(ctx, s, heartbeatTime)
 	if err != nil {
-		log.Error(ctx, "query workers fail", err)
+		log.Error(ctx, "query workers fail: "+err.Error(), err)
 		return nil, err
 	}
 	for rows.Next() {
 		var worker model.RaindropWorker
 		e := rows.Scan(&worker.Id, &worker.Code, &worker.TimeUnit, &worker.HeartbeatTime, &worker.CreateTime, &worker.UpdateTime, &worker.Version, &worker.DelFlag)
 		if e != nil {
-			log.Error(ctx, "query workers fail", e)
+			log.Error(ctx, "query workers fail: "+err.Error(), e)
 			return nil, e
 		}
 		workers = append(workers, worker)
@@ -157,12 +157,12 @@ func (m *MySqlDb) ActivateWorker(ctx context.Context, id int64, code string, tim
 
 	result, err := _mysqlDb.ExecContext(ctx, sql, code, timeUnit, time.Now(), id, version)
 	if err != nil {
-		log.Error(ctx, "heartbeat worker fail!!!", err)
+		log.Error(ctx, "heartbeat worker fail!!!: "+err.Error(), err)
 		return nil, err
 	}
 	count, err := result.RowsAffected()
 	if err != nil {
-		log.Error(ctx, "heartbeat worker fail!!!", err)
+		log.Error(ctx, "heartbeat worker fail!!!: "+err.Error(), err)
 		return nil, err
 	}
 	if count != 1 {
@@ -194,11 +194,11 @@ func (m *MySqlDb) HeartbeatWorker(ctx context.Context, worker *model.RaindropWor
 
 	result, err := _mysqlDb.ExecContext(ctx, sql, time.Now(), worker.Id, worker.Version)
 	if err != nil {
-		log.Error(ctx, "heartbeat worker fail!!!", err)
+		log.Error(ctx, "heartbeat worker fail!!!: "+err.Error(), err)
 	}
 	count, err := result.RowsAffected()
 	if err != nil {
-		log.Error(ctx, "heartbeat worker fail!!!", err)
+		log.Error(ctx, "heartbeat worker fail!!!: "+err.Error(), err)
 	}
 	if count != 1 {
 		log.Error(ctx, "heartbeat worker fail!!! id:"+strconv.FormatInt(worker.Id, 10)+" result: "+strconv.FormatInt(count, 10))
@@ -222,7 +222,7 @@ func (m *MySqlDb) GetWorkerById(ctx context.Context, id int64) (*model.RaindropW
 		&worker.CreateTime, &worker.UpdateTime, &worker.Version, &worker.DelFlag)
 
 	if err != nil {
-		log.Error(ctx, "get worker by id fail. id: "+strconv.FormatInt(id, 10), err)
+		log.Error(ctx, "get worker by id fail. id: "+strconv.FormatInt(id, 10)+", error: "+err.Error(), err)
 		return nil, err
 	}
 
