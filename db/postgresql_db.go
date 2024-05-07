@@ -31,12 +31,12 @@ func (m *PostgreSqlDb) InitSql(tableName string) {
 		"\t\"update_time\"          TIMESTAMP WITH TIME ZONE not null default CURRENT_TIMESTAMP,\n" +
 		"\t\"version\"              bigint               not null default '1',\n" +
 		"\t\"del_flag\"             smallint                 not null default '2',\n" +
-		"\tconstraint \"PK_SOC_RAINDROP_WORKER\" primary key (\"id\")\n" +
+		"\tconstraint \"PK_" + m.tableName + "\" primary key (\"id\")\n" +
 		"\t);\n" +
-		"\tCREATE INDEX \"idx_soc_raindrop_worker_hb_time\" on \"soc_raindrop_worker\" (\n" +
+		"\tCREATE INDEX \"idx_soc_raindrop_worker_hb_time\" on \"" + m.tableName + "\" (\n" +
 		"\t\"heartbeat_time\"\n" +
 		"\t);\n" +
-		"\tCREATE INDEX \"idx_soc_raindrop_worker_code\" on \"soc_raindrop_worker\" (\n" +
+		"\tCREATE INDEX \"idx_soc_raindrop_worker_code\" on \"" + m.tableName + "\" (\n" +
 		"\t\"code\"\n" +
 		"\t);\n"
 }
