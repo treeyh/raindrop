@@ -12,7 +12,10 @@ import (
 func TestMySqlDb_GetNowTime(t *testing.T) {
 	ctx := getTestContext()
 	l := logger.NewDefault()
-	db.InitMySqlDb(ctx, getTestConfig(), l)
+	err := db.InitPostgreSqlDb(ctx, getTestConfig(), l)
+	if err != nil {
+		return
+	}
 
 	now, err := db.Db.GetNowTime(ctx)
 

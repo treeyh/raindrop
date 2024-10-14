@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -94,7 +95,8 @@ func InitPostgreSqlDb(ctx context.Context, dbConfig config.RainDropDbConfig, l l
 	}
 
 	var err error
-	_pgDbPool, err = pgxpool.New(ctx, dbConfig.DbUrl)
+	dbUrl := "postgres://" + strings.TrimSpace(dbConfig.DbUrl)
+	_pgDbPool, err = pgxpool.New(ctx, dbUrl)
 	if err != nil {
 		log.Error(ctx, consts.ErrMsgDatabaseInitFail.Error(), err)
 		return err

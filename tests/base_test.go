@@ -54,7 +54,7 @@ func getTestConfig() config.RainDropDbConfig {
 
 	return config.RainDropDbConfig{
 		DbType:    consts.DbTypePostgreSQL,
-		DbUrl:     "postgres://proot:4pVmsxTuB_5ZlnSX@127.0.0.1:5432/soc_expense_tracker_utest_db",
+		DbUrl:     "proot:4pVmsxTuB_5ZlnSX@127.0.0.1:5432/soc_expense_tracker_utest_db",
 		TableName: tableName,
 	}
 
