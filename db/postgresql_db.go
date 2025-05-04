@@ -163,7 +163,7 @@ func (m *PostgreSqlDb) QueryFreeWorkers(ctx context.Context, heartbeatTime time.
 
 // ActivateWorker 激活启用worker
 func (m *PostgreSqlDb) ActivateWorker(ctx context.Context, id int64, code string, timeUnit int, version int64) (*model.RaindropWorker, error) {
-	sql := "UPDATE \"" + m.tableName + "\" SET \"code\" = $1, \"time_unit\" = $2, \"version\" = \"version\" + 1, \"heartbeat_time\" = $3 WHERE \"id\" = $4 AND \"version\" = $5 "
+	sql := "UPDATE \"" + m.tableName + "\" SET \"code\" = $1, \"time_unit\" = $2, \"version\" = \"version\" + 1, \"heartbeat_time\" = $3, \"update_time\" = NOW() WHERE \"id\" = $4 AND \"version\" = $5 "
 
 	result, err := _pgDbPool.Exec(ctx, sql, code, timeUnit, time.Now(), id, version)
 	if err != nil {
@@ -197,7 +197,7 @@ func (m *PostgreSqlDb) ActivateWorker(ctx context.Context, id int64, code string
 
 // HeartbeatWorker 心跳
 func (m *PostgreSqlDb) HeartbeatWorker(ctx context.Context, worker *model.RaindropWorker) (*model.RaindropWorker, error) {
-	sql := "UPDATE \"" + m.tableName + "\" SET \"version\" = \"version\" + 1, \"heartbeat_time\" = $1 WHERE \"id\" = $2 AND \"version\" = $3 "
+	sql := "UPDATE \"" + m.tableName + "\" SET \"version\" = \"version\" + 1, \"heartbeat_time\" = $1, \"update_time\" = NOW() WHERE \"id\" = $2 AND \"version\" = $3 "
 
 	result, err := _pgDbPool.Exec(ctx, sql, time.Now(), worker.Id, worker.Version)
 	if err != nil {
