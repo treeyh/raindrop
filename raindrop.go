@@ -2,13 +2,15 @@ package raindrop
 
 import (
 	"context"
+	"strconv"
+	"time"
+
 	"github.com/treeyh/raindrop/config"
 	"github.com/treeyh/raindrop/consts"
 	"github.com/treeyh/raindrop/db"
 	"github.com/treeyh/raindrop/logger"
 	"github.com/treeyh/raindrop/utils"
 	"github.com/treeyh/raindrop/worker"
-	"time"
 )
 
 var (
@@ -117,8 +119,9 @@ func checkDbTimeInterval(ctx context.Context) error {
 	}
 
 	if now.Unix() > (dbNow.Unix()+consts.DatabaseTimeInterval) || now.Unix() < (dbNow.Unix()-consts.DatabaseTimeInterval) {
-		log.Error(ctx, consts.ErrMsgDatabaseServerTimeInterval.Error())
-		return consts.ErrMsgDatabaseServerTimeInterval
+		log.Error(ctx, consts.ErrMsgDatabaseServerTimeInterval.Error()+". system now time:"+now.String()+"; system now unix: "+strconv.FormatInt(now.Unix(), 10)+" ; db now time:"+dbNow.String()+"; db now unix: "+strconv.FormatInt(dbNow.Unix(), 10))
+		panic(consts.ErrMsgDatabaseServerTimeInterval.Error())
+		// return consts.ErrMsgDatabaseServerTimeInterval
 	}
 	return nil
 }
